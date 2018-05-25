@@ -15,14 +15,14 @@ if __name__ == "__main__":
     parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
     parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
     parser.add_argument("user", help="Identifier of user launching this program", nargs=1)
-    parser.add_argument("survey", help="Name of survey to download results of", nargs=1)
+    parser.add_argument("survey_name", metavar="survey-name", help="Name of survey to download results of", nargs=1)
     parser.add_argument("output", help="JSON file to write serialized data to", nargs=1)
 
     args = parser.parse_args()
     echo_mobile_username = args.echo_mobile_username[0]
     echo_mobile_password = args.echo_mobile_password[0]
     user = args.user[0]
-    target_survey_name = args.survey[0]
+    target_survey_name = args.survey_name[0]
     output_path = args.output[0]
 
     auth = (echo_mobile_username, echo_mobile_password)
