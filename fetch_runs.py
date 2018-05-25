@@ -7,10 +7,9 @@ if __name__ == "__main__":
     BASE_URL = "https://www.echomobile.org/api/cms/"
 
     parser = argparse.ArgumentParser(description="Poll EchoMobile for survey results")
-    parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="", nargs=1)
-    parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="User launching this program",
-                        nargs=1)
-    parser.add_argument("user", help="Identify of user launching this program", nargs=1)
+    parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
+    parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
+    parser.add_argument("user", help="Identifier of user launching this program", nargs=1)
     parser.add_argument("survey", help="Name of survey to download results of", nargs=1)
 
     args = parser.parse_args()
