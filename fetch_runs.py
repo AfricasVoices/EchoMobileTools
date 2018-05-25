@@ -36,21 +36,19 @@ if __name__ == "__main__":
     target_survey_id = matching_surveys[0]["key"]
 
     # Generate a report for that survey
-    generate_request = requests.post(BASE_URL + "report/generate", auth=auth,
-                                     params={"type": 13, "gen": "raw,label", "target": target_survey_id})
-    rkey = generate_request.json()["rkey"]
-
-    print(rkey)
+    report_generate_request = requests.post(BASE_URL + "report/generate", auth=auth,
+                                            params={"type": 13, "gen": "raw,label", "target": target_survey_id})
+    rkey = report_generate_request.json()["rkey"]
 
     # Download the generated report, polling until it becomes available
-    serve_response = "Unauthorized"
-    while serve_response == "Unauthorized":  # Server returns unauthorized until the report is ready.
-        serve_request = requests.get(BASE_URL + "report/serve", auth=auth, params={"rkey": rkey})
-        serve_response = serve_request.text
+    report_serve_response = "Unauthorized"
+    while report_serve_response == "Unauthorized":  # Server returns unauthorized until the report is ready.
+        report_serve_request = requests.get(BASE_URL + "report/serve", auth=auth, params={"rkey": rkey})
+        report_serve_response = report_serve_request.text
         time.sleep(2)
 
     print("Downloaded CSV:")
-    print(serve_response)
+    print(report_serve_response)
 
     # Delete the background task we made when generating the report
     cancel_request = requests.post(BASE_URL + "backgroundtask/cancel", auth=auth, params={"key": "report_" + rkey})
