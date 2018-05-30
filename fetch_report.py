@@ -44,6 +44,8 @@ if __name__ == "__main__":
 
     # Generate a report for that survey
     report_generate_request = requests.post(BASE_URL + "report/generate", auth=auth,
+                                            # Type is undocumented, but from inspection of the calls the website is
+                                            # making it turns out that '13' is the magic number we need here.
                                             params={"type": 13, "gen": "raw", "target": target_survey_id})
     rkey = report_generate_request.json()["rkey"]
 
