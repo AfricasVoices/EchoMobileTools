@@ -67,7 +67,7 @@ if __name__ == "__main__":
     data = list(TracedDataCSVIO.import_csv_to_traced_data_iterable(user, BytesIO(report_serve_response.encode())))
 
     # Write the parsed items to a json file
-    if not os.path.exists(os.path.dirname(output_path)):
+    if os.path.dirname(output_path) is not "" and not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
 
     with open(output_path, "wb") as f:
