@@ -9,11 +9,11 @@ from core_data_modules.traced_data.io import TracedDataCSVIO, TracedDataJsonIO
 if __name__ == "__main__":
     BASE_URL = "https://www.echomobile.org/api/cms/"
 
-    parser = argparse.ArgumentParser(description="Poll EchoMobile for survey results")
+    parser = argparse.ArgumentParser(description="Poll Echo Mobile for survey results")
     parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
     parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
     parser.add_argument("user", help="Identifier of user launching this program", nargs=1)
-    parser.add_argument("survey_name", metavar="survey-name", help="Name of survey to download results of", nargs=1)
+    parser.add_argument("survey_name", metavar="survey-name", help="Name of survey to download the results of", nargs=1)
     parser.add_argument("output", help="JSON file to write serialized data to", nargs=1)
 
     args = parser.parse_args()
@@ -31,11 +31,18 @@ if __name__ == "__main__":
     matching_surveys = [survey for survey in target_response["surveys"] if survey["name"] == target_survey_name]
 
     if len(matching_surveys) == 0:
-        print("Error: Survey not found")
+        print("Error: Requested survey not found on Echo Mobile.")
         exit(1)
 
     if len(matching_surveys) > 1:
-        print("Error: Survey name ambiguous")  # Not sure if this can actually happen but being defensive just in case.
+        # Not sure if this can actually happen but being defensive just in case.
+        print("Error: Survey name is ambiguous. The requested survey name matched the following surveys:")
+        for survey in matching_surveys:
+            print("  key: " + survey["key"])
+            print("    Number of questions: " + str(survey["n_questions"]))
+            print("    Invitation message: " + survey["invite_message"])
+            print("    Thanks message: " + survey["thanks_message"])
+        print("Please report this incident to the project developers.")
         exit(1)
 
     target_survey_id = matching_surveys[0]["key"]
@@ -47,27 +54,28 @@ if __name__ == "__main__":
                                             params={"type": 13, "gen": "raw", "target": target_survey_id})
     rkey = report_generate_request.json()["rkey"]
 
-    # Poll for report status until the report has stopped generating.
-    # Status is not documented, but from observation '1' means generating and '3' means successfully generated
-    report_status = 1
-    while report_status == 1:
-        report_status_request = requests.get(BASE_URL + "backgroundtask", auth=auth)
-        report_status = report_status_request.json()["tasks"]["report_" + rkey]["status"]
-        time.sleep(2)
-    assert report_status == 3, "Report stopped generating, but with an unknown status"
+    try:
+        # Poll for report status until the report has stopped generating.
+        # Status is not documented, but from observation '1' means generating and '3' means successfully generated
+        report_status = 1
+        while report_status == 1:
+            report_status_request = requests.get(BASE_URL + "backgroundtask", auth=auth)
+            report_status = report_status_request.json()["tasks"]["report_" + rkey]["status"]
+            time.sleep(2)
+        assert report_status == 3, "Report stopped generating, but with an unknown status"
 
-    # Download the generated report
-    report_serve_request = requests.get(BASE_URL + "report/serve", auth=auth, params={"rkey": rkey})
-    report_serve_response = report_serve_request.text
+        # Download the generated report
+        report_serve_request = requests.get(BASE_URL + "report/serve", auth=auth, params={"rkey": rkey})
+        report_serve_response = report_serve_request.text
 
-    # Parse the downloaded report into a list of TracedData objects
-    data = list(TracedDataCSVIO.import_csv_to_traced_data_iterable(user, StringIO(report_serve_response)))
+        # Parse the downloaded report into a list of TracedData objects
+        data = list(TracedDataCSVIO.import_csv_to_traced_data_iterable(user, StringIO(report_serve_response)))
 
-    # Write the parsed items to a json file
-    if os.path.dirname(output_path) is not "" and not os.path.exists(os.path.dirname(output_path)):
-        os.makedirs(os.path.dirname(output_path))
-    with open(output_path, "w") as f:
-        TracedDataJsonIO.export_traced_data_iterable_to_json(data, f, pretty_print=True)
-
-    # Delete the background task we made when generating the report
-    cancel_request = requests.post(BASE_URL + "backgroundtask/cancel", auth=auth, params={"key": "report_" + rkey})
+        # Write the parsed items to a json file
+        if os.path.dirname(output_path) is not "" and not os.path.exists(os.path.dirname(output_path)):
+            os.makedirs(os.path.dirname(output_path))
+        with open(output_path, "w") as f:
+            TracedDataJsonIO.export_traced_data_iterable_to_json(data, f, pretty_print=True)
+    finally:
+        # Delete the background task we made when generating the report
+        cancel_request = requests.post(BASE_URL + "backgroundtask/cancel", auth=auth, params={"key": "report_" + rkey})
