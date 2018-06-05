@@ -21,12 +21,12 @@ exports to a JSON file ready for consumption by the rest of the pipeline.
 This project is configured to use Python 3.6 by default, but all code is Python 2.7 compliant.
 
 ### Configuring Parameters
-By default, only the raw responses are downloaded.
+By default, the raw and labelled responses are downloaded, along with the name and phone number fields.
 
 To change this, set the `gen` parameter of the `report_generate_request` to a comma-separated list of the datatypes 
 to download e.g. `gen: "raw,label,value,score"`.
 
-To add contact options, similarly set the `std_field` parameter in `report_generate_request` as a comma separated list,
+To change the contact options, similarly set the `std_field` parameter in `report_generate_request` to a comma separated list,
 using one or more of the following options: 
 `name,phone,internal_id,group,referrer,referrer_phone,upload_date,last_survey_complete_date,geo,locationTextRaw,labels,linked_entity,opted_out`
 
