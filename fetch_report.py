@@ -7,7 +7,7 @@ import requests
 from core_data_modules.traced_data.io import TracedDataCSVIO, TracedDataJsonIO
 
 if __name__ == "__main__":
-    BASE_URL = "https://www.echomobile.org/api/cms/"
+    BASE_URL = "https://www.echomobile.org/api/"
 
     parser = argparse.ArgumentParser(description="Poll Echo Mobile for survey results")
     parser.add_argument("user", help="Identifier of user launching this program", nargs=1)
@@ -28,13 +28,13 @@ if __name__ == "__main__":
     session = requests.Session()
 
     # Log in to Echo Mobile
-    login_request = session.post("https://www.echomobile.org/api/" + "authenticate/simple",
+    login_request = session.post(BASE_URL + "authenticate/simple",
                                  params={"_login": echo_mobile_username, "_pw": echo_mobile_password,
                                          # auth is a magic API key extracted from echomobile.org/dist/src/app.build.js
                                          "auth": "JXEIUOVNQLKJDDHA2J", "populate_session": 1})
 
     # Determine key of desired account
-    account_request = session.get(BASE_URL + "account/me", params={"with_linked": 1})
+    account_request = session.get(BASE_URL + "cms/account/me", params={"with_linked": 1})
     accounts = account_request.json()
     matching_accounts = [account for account in accounts["linked"] if account["ent_name"] == account_name]
 
@@ -47,11 +47,11 @@ if __name__ == "__main__":
     account_key = matching_accounts[0]["key"]
 
     # Switch to the desired account
-    linked_request = session.post("https://www.echomobile.org/api/" + "authenticate/linked",
+    linked_request = session.post(BASE_URL + "authenticate/linked",
                                   params={"acckey": account_key})
 
     # Determine ID of survey
-    target_request = session.get(BASE_URL + "survey")
+    target_request = session.get(BASE_URL + "cms/survey")
     surveys = target_request.json()["surveys"]
     matching_surveys = [survey for survey in surveys if survey["name"] == target_survey_name]
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     target_survey_id = matching_surveys[0]["key"]
 
     # Generate a report for that survey
-    report_generate_request = session.post(BASE_URL + "report/generate",
+    report_generate_request = session.post(BASE_URL + "cms/report/generate",
                                            # Type is undocumented, but from inspection of the calls the website is
                                            # making it turns out that '13' is the magic number we need here.
                                            params={"type": 13, "gen": "raw,label",
@@ -87,13 +87,13 @@ if __name__ == "__main__":
         # Status is not documented, but from observation '1' means generating and '3' means successfully generated
         report_status = 1
         while report_status == 1:
-            report_status_request = session.get(BASE_URL + "backgroundtask")
+            report_status_request = session.get(BASE_URL + "cms/backgroundtask")
             report_status = report_status_request.json()["tasks"]["report_" + rkey]["status"]
             time.sleep(2)
         assert report_status == 3, "Report stopped generating, but with an unknown status"
 
         # Download the generated report
-        report_serve_request = session.get(BASE_URL + "report/serve", params={"rkey": rkey})
+        report_serve_request = session.get(BASE_URL + "cms/report/serve", params={"rkey": rkey})
         report_serve_response = report_serve_request.text
 
         # Parse the downloaded report into a list of TracedData objects
@@ -106,4 +106,4 @@ if __name__ == "__main__":
             TracedDataJsonIO.export_traced_data_iterable_to_json(data, f, pretty_print=True)
     finally:
         # Delete the background task we made when generating the report
-        cancel_request = session.post(BASE_URL + "backgroundtask/cancel", params={"key": "report_" + rkey})
+        cancel_request = session.post(BASE_URL + "cms/backgroundtask/cancel", params={"key": "report_" + rkey})
