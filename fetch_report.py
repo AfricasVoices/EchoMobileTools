@@ -33,7 +33,7 @@ if __name__ == "__main__":
                                          # auth is a magic API key extracted from echomobile.org/dist/src/app.build.js
                                          "auth": "JXEIUOVNQLKJDDHA2J", "populate_session": 1})
 
-    # Get available accounts
+    # Determine key of desired account
     account_request = session.get(BASE_URL + "account/me", params={"with_linked": 1})
     accounts = account_request.json()
     matching_accounts = [account for account in accounts["linked"] if account["ent_name"] == account_name]
@@ -44,9 +44,11 @@ if __name__ == "__main__":
             print(account["ent_name"])
         exit(1)
 
+    account_key = matching_accounts[0]["key"]
+
     # Switch to the desired account
     linked_request = session.post("https://www.echomobile.org/api/" + "authenticate/linked",
-                                  params={"acckey": matching_accounts[0]["key"]})
+                                  params={"acckey": account_key})
 
     # Determine ID of survey
     target_request = session.get(BASE_URL + "survey")
