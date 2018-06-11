@@ -14,7 +14,6 @@ if __name__ == "__main__":
     parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
     parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
     parser.add_argument("account", help="Name of Echo Mobile organisation to log into", nargs=1)
-    parser.add_argument("survey_name", metavar="survey-name", help="Name of survey to download the results of", nargs=1)
     parser.add_argument("output", help="JSON file to write serialized data to", nargs=1)
 
     args = parser.parse_args()
@@ -22,7 +21,6 @@ if __name__ == "__main__":
     echo_mobile_username = args.echo_mobile_username[0]
     echo_mobile_password = args.echo_mobile_password[0]
     account_name = args.account[0]
-    target_survey_name = args.survey_name[0]
     output_path = args.output[0]
 
     session = requests.Session()
@@ -53,7 +51,10 @@ if __name__ == "__main__":
     # Download the global inbox.
     # Generate a report for that survey
     report_generate_request = session.post(BASE_URL + "cms/report/generate",
-                                           params={"type": 11, "ftype": 1,
+                                           params={
+                                                   # type and ftype were determined by inspecting the calls the website
+                                                   # was making.
+                                                   "type": 11, "ftype": 1,
                                                    "std_field": "internal_id,group,referrer,upload_date,"
                                                                 "last_survey_complete_date,"
                                                                 "geo,locationTextRaw,labels"})
@@ -82,7 +83,7 @@ if __name__ == "__main__":
         with open(output_path, "w") as f:
             TracedDataJsonIO.export_traced_data_iterable_to_json(data, f, pretty_print=True)
 
-        # Write the parsed items to a json file
+        # Write the parsed items to a csv file
         output_path_csv = "output.csv"
         if os.path.dirname(output_path_csv) is not "" and not os.path.exists(os.path.dirname(output_path_csv)):
             os.makedirs(os.path.dirname(output_path_csv))
