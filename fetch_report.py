@@ -31,7 +31,7 @@ if __name__ == "__main__":
     try:
         session.login(echo_mobile_username, echo_mobile_password)
         session.use_account_with_name(account_name)
-        report = session.report_for_survey_name(survey_name)
+        report = session.survey_report_for_name(survey_name)
 
         # Parse the downloaded report into a list of TracedData objects
         data = list(TracedDataCSVIO.import_csv_to_traced_data_iterable(user, StringIO(report)))

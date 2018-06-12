@@ -19,7 +19,7 @@ class EchoMobileSession(object):
     >>> session = EchoMobileSession()
     >>> session.login(<USERNAME>, <PASSWORD>)
     >>> session.use_account_with_name(<ACCOUNT_NAME>)  # Optional for users with only one account
-    >>> report = session.report_for_survey_name(<SURVEY_NAME>)
+    >>> report = session.survey_report_for_name(<SURVEY_NAME>)
     >>> session.delete_session_background_tasks()  # Removes the report background task from the Echo Mobile website.
     """
     BASE_URL = "https://www.echomobile.org/api/"
@@ -131,9 +131,7 @@ class EchoMobileSession(object):
         self.use_account_with_key(self.account_key_for_name(account_name))
 
     def surveys(self):
-        """
-        Returns the list of active surveys available to the logged in user/account.
-        """
+        """Returns the list of active surveys available to the logged in user/account."""
         if self.verbose:
             six.print_("Fetching available surveys... ", end="", flush=True)
 
@@ -263,6 +261,36 @@ class EchoMobileSession(object):
 
         return report_key
 
+    def generate_global_inbox_report(self, wait_until_generated=True):
+        if self.verbose:
+            six.print_("Requesting generation of report for global inbox... ", end="", flush=True)
+
+        request = self.session.post(self.BASE_URL + "cms/report/generate",
+                                    params={
+                                        # type and ftype were determined by inspecting the calls the website
+                                        # was making.
+                                        "type": 11, "ftype": 1,
+                                        "std_field": "internal_id,group,referrer,upload_date,"
+                                                     "last_survey_complete_date,"
+                                                     "geo,locationTextRaw,labels"
+                                    })
+        response = request.json()
+
+        if not response["success"]:
+            raise EchoMobileError(response["message"])
+        elif self.verbose:
+            print("Done")
+
+        report_key = response["rkey"]
+        self.background_tasks.add("report_" + report_key)
+
+        if wait_until_generated:
+            print("About to wait for a report to generate. "
+                  "Note that progress will always report 0% until done, due to an Echo Mobile bug.")
+            self.await_report_generated(report_key)
+
+        return report_key
+
     def download_report(self, report_key):
         """
         Downloads the specified report from Echo Mobile.
@@ -285,7 +313,7 @@ class EchoMobileSession(object):
 
         return response
 
-    def report_for_survey_key(self, survey_key, contact_fields=None, response_formats=None):
+    def survey_report_for_key(self, survey_key, contact_fields=None, response_formats=None):
         """
         Generates and downloads a report for the survey with the given key.
 
@@ -306,7 +334,7 @@ class EchoMobileSession(object):
                                                  response_formats=response_formats, wait_until_generated=True)
         return self.download_report(report_key)
 
-    def report_for_survey_name(self, survey_name, contact_fields=None, response_formats=None):
+    def survey_report_for_name(self, survey_name, contact_fields=None, response_formats=None):
         """
         Generates and downloads a report for the survey with the given name.
 
@@ -323,8 +351,11 @@ class EchoMobileSession(object):
         :return: CSV containing the survey report
         :rtype: str
         """
-        return self.report_for_survey_key(self.survey_key_for_name(survey_name), contact_fields=contact_fields,
+        return self.survey_report_for_key(self.survey_key_for_name(survey_name), contact_fields=contact_fields,
                                           response_formats=response_formats)
+
+    def global_inbox_report(self):
+        return self.download_report(self.generate_global_inbox_report(wait_until_generated=True))
 
     def delete_background_task(self, task_key):
         """
