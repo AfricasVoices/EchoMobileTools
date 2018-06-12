@@ -43,7 +43,7 @@ class EchoMobileSession(object):
         if not response["success"]:
             raise EchoMobileError(response["message"])
         if self.verbose:
-            print("OK")
+            print("Done")
 
     def accounts(self):
         """
@@ -61,7 +61,7 @@ class EchoMobileSession(object):
         if not response["success"]:
             raise EchoMobileError(response["message"])
         if self.verbose:
-            print("OK")
+            print("Done")
             print("  Accounts found for this user:")
             for account in response["linked"]:
                 print("    " + account["ent_name"])
@@ -105,7 +105,7 @@ class EchoMobileSession(object):
         if not response["success"]:
             raise EchoMobileError(response["message"])
         if self.verbose:
-            print("OK")
+            print("Done")
 
     def use_account_with_name(self, account_name):
         """
@@ -129,7 +129,7 @@ class EchoMobileSession(object):
         if not response["success"]:
             raise EchoMobileError(response["message"])
         if self.verbose:
-            print("OK")
+            print("Done")
             print("  Surveys found for this user/account:")
             for survey in response["surveys"]:
                 print("    " + survey["name"])
@@ -193,7 +193,7 @@ class EchoMobileSession(object):
             report_status = task["status"]
 
         if self.verbose:
-            print("\rWaiting for report to generate... OK        ")
+            print("\rWaiting for report to generate... Done        ")
 
         assert report_status == 3, "Report stopped generating, but with an unknown status"
 
@@ -206,11 +206,14 @@ class EchoMobileSession(object):
 
         :param survey_key: Key of survey to generate report for.
         :type survey_key: str
-        :param response_formats: List of response formats to download. Defaults to ["
+        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
+                                 The full list of options is : raw, label, value, score.
+        :type response_formats: list of str
         :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
                                The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
                                upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
-                               opted_out
+                               opted_out.
+        :type contact_fields: list of str
         :param wait_until_generated: Whether to wait for the report to finish generating on the Echo Mobile server
                                      before returning.
         :type wait_until_generated: bool
@@ -236,7 +239,7 @@ class EchoMobileSession(object):
         if not response["success"]:
             raise EchoMobileError(response["message"])
         elif self.verbose:
-            print("OK")
+            print("Done")
 
         report_key = response["rkey"]
         self.background_tasks.add("report_" + report_key)
@@ -264,7 +267,7 @@ class EchoMobileSession(object):
         response = request.text
 
         if self.verbose:
-            print("OK")
+            print("Done")
 
         return response
 
@@ -274,6 +277,14 @@ class EchoMobileSession(object):
 
         :param survey_key: Key of survey to generate and download report for
         :type survey_key: str
+        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
+                                 The full list of options is : raw, label, value, score.
+        :type response_formats: list of str
+        :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
+                               The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
+                               upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
+                               opted_out.
+        :type contact_fields: list of str
         :return: CSV containing the survey report
         :rtype: str
         """
@@ -281,7 +292,7 @@ class EchoMobileSession(object):
                                                  response_formats=response_formats, wait_until_generated=True)
         return self.download_report(report_key)
 
-    def report_for_survey_name(self, survey_name, contact_fields=None, response_formats=None):
+    def report_for_survey_name(self, survey_name, **kwargs):
         """
         Generates and downloads a report for the survey with the given name.
         
@@ -290,8 +301,7 @@ class EchoMobileSession(object):
         :return: CSV containing the survey report
         :rtype: str
         """
-        return self.report_for_survey_key(self.survey_key_for_name(survey_name), contact_fields=contact_fields,
-                                          response_formats=response_formats)
+        return self.report_for_survey_key(self.survey_key_for_name(survey_name), kwargs)
 
     def delete_background_task(self, task_key):
         """
@@ -309,7 +319,7 @@ class EchoMobileSession(object):
         if not response["success"]:
             raise EchoMobileError(response["message"])
         if self.verbose:
-            print("OK")
+            print("Done")
 
     def delete_session_background_tasks(self):
         """
