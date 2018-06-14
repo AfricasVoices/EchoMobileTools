@@ -24,6 +24,16 @@ class EchoMobileSession(object):
     """
     BASE_URL = "https://www.echomobile.org/api/"
 
+    def log(self, message, **log_args):
+        if self.verbose:
+            six.print_(message, **log_args)
+
+    def log_start(self, message):
+        self.log(message, end="", flush=True)
+
+    def log_done(self):
+        self.log("Done")
+
     def __init__(self, verbose=False):
         """
         :param verbose: Whether to initialise with verbose mode enabled.
@@ -42,8 +52,7 @@ class EchoMobileSession(object):
         :param password: Echo Mobile password.
         :type password: str
         """
-        if self.verbose:
-            six.print_("Logging in as '{}'... ".format(username), end="", flush=True)
+        self.log_start("Logging in as '{}'... ".format(username))
 
         request = self.session.post(self.BASE_URL + "authenticate/simple",
                                     params={"_login": username, "_pw": password,
@@ -54,8 +63,7 @@ class EchoMobileSession(object):
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        if self.verbose:
-            print("Done")
+        self.log_done()
 
     def accounts(self):
         """
@@ -64,19 +72,18 @@ class EchoMobileSession(object):
         :return: List of available accounts.
         :rtype: list
         """
-        if self.verbose:
-            six.print_("Fetching user's accounts... ", end="", flush=True)
+        self.log_start("Fetching user's accounts... ")
 
         request = self.session.get(self.BASE_URL + "cms/account/me", params={"with_linked": 1})
         response = request.json()
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        if self.verbose:
-            print("Done")
-            print("  Accounts found for this user:")
-            for account in response["linked"]:
-                print("    " + account["ent_name"])
+        self.log_done()
+
+        self.log("  Accounts found for this user:")
+        for account in response["linked"]:
+            self.log("    " + account["ent_name"])
 
         return response["linked"]
 
@@ -96,8 +103,7 @@ class EchoMobileSession(object):
 
         account_key = matching_accounts[0]["key"]
 
-        if self.verbose:
-            print("Key for account '{}' is '{}'".format(account_name, account_key))
+        self.log("Key for account '{}' is '{}'".format(account_name, account_key))
 
         return account_key
 
@@ -108,16 +114,14 @@ class EchoMobileSession(object):
         :param account_key: Key of account to switch to.
         :type account_key: str
         """
-        if self.verbose:
-            six.print_("Switching to account '{}'... ".format(account_key), end="", flush=True)
+        self.log_start("Switching to account '{}'... ".format(account_key))
 
         request = self.session.post(self.BASE_URL + "authenticate/linked", params={"acckey": account_key})
         response = request.json()
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        if self.verbose:
-            print("Done")
+        self.log_done()
 
     def use_account_with_name(self, account_name):
         """
@@ -134,19 +138,18 @@ class EchoMobileSession(object):
         """
         Returns the list of active surveys available to the logged in user/account.
         """
-        if self.verbose:
-            six.print_("Fetching available surveys... ", end="", flush=True)
+        self.log_start("Fetching available surveys... ")
 
         request = self.session.get(self.BASE_URL + "cms/survey")
         response = request.json()
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        if self.verbose:
-            print("Done")
-            print("  Surveys found for this user/account:")
-            for survey in response["surveys"]:
-                print("    " + survey["name"])
+        self.log_done()
+
+        self.log("  Surveys found for this user/account:")
+        for survey in response["surveys"]:
+            self.log("    " + survey["name"])
 
         return response["surveys"]
 
@@ -170,8 +173,7 @@ class EchoMobileSession(object):
 
         survey_key = matching_surveys[0]["key"]
 
-        if self.verbose:
-            print("Key for survey '{}' is '{}'".format(survey_name, survey_key))
+        self.log("Key for survey '{}' is '{}'".format(survey_name, survey_key))
 
         return survey_key
 
@@ -184,8 +186,7 @@ class EchoMobileSession(object):
         :param poll_interval: Time to wait between polling attempts, in seconds.
         :type poll_interval: float
         """
-        if self.verbose:
-            six.print_("Waiting for report to generate... ", end="", flush=True)
+        self.log_start("Waiting for report to generate... ")
 
         # Status is not documented, but from observation '1' means generating and '3' means successfully generated
         report_status = 1
@@ -200,14 +201,14 @@ class EchoMobileSession(object):
 
             task = response["tasks"]["report_" + report_key]
 
-            if self.verbose and task["total"] != 0:
+            if task["total"] != 0:
                 progress = task["progress"] / task["total"] * 100
-                six.print_("\rWaiting for report to generate... {0:.2f}%".format(progress), end="", flush=True)
+                self.log("\rWaiting for report to generate... {0:.2f}%".format(progress), end="", flush=True)
 
             report_status = task["status"]
 
-        if self.verbose:
-            print("\rWaiting for report to generate... Done        ")
+        self.log("\rWaiting for report to generate...")
+        self.log_done()
 
         assert report_status == 3, "Report stopped generating, but with an unknown status"
 
@@ -237,8 +238,7 @@ class EchoMobileSession(object):
         if contact_fields is None:
             contact_fields = ["name", "phone"]
 
-        if self.verbose:
-            six.print_("Requesting generation of report for survey '{}'... ".format(survey_key), end="", flush=True)
+        self.log_start("Requesting generation of report for survey '{}'... ".format(survey_key))
 
         request = self.session.post(self.BASE_URL + "cms/report/generate",
                                     # Type is undocumented, but from inspection of the calls the website is
@@ -252,8 +252,7 @@ class EchoMobileSession(object):
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        elif self.verbose:
-            print("Done")
+        self.log_done()
 
         report_key = response["rkey"]
         self.background_tasks.add("report_" + report_key)
@@ -274,14 +273,12 @@ class EchoMobileSession(object):
         :return: CSV containing the survey report
         :rtype: str
         """
-        if self.verbose:
-            six.print_("Downloading report... ", end="", flush=True)
+        self.log_start("Downloading report... ")
 
         request = self.session.get(self.BASE_URL + "cms/report/serve", params={"rkey": report_key})
         response = request.text
 
-        if self.verbose:
-            print("Done")
+        self.log_done()
 
         return response
 
@@ -333,16 +330,14 @@ class EchoMobileSession(object):
         :param task_key: Key of background task to delete
         :type task_key: str
         """
-        if self.verbose:
-            six.print_("Deleting background task '{}'... ".format(task_key), end="", flush=True)
+        self.log_start("Deleting background task '{}'... ".format(task_key))
 
         request = self.session.post(self.BASE_URL + "cms/backgroundtask/cancel", params={"key": task_key})
         response = request.json()
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        if self.verbose:
-            print("Done")
+        self.log_done()
 
     def delete_session_background_tasks(self):
         """
