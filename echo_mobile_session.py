@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 import six
 import requests
@@ -24,19 +25,29 @@ class EchoMobileSession(object):
     """
     BASE_URL = "https://www.echomobile.org/api/"
 
+    _log_start_time = 0
+
     def log(self, message, **log_args):
         if self.verbose:
-            six.print_("[{}] {}".format(time.time(), message), **log_args)
+            six.print_("[{}] {}".format(datetime.now().isoformat(), message), **log_args)
 
     def log_start(self, message):
+        self._log_start_time = time.time()
         self.log(message, end="", flush=True)
 
-    def log_replace_line(self, message, **log_args):
+    def log_progress(self, message, progress, **log_args):
         if self.verbose:
-            six.print_("\r[{}] {}".format(time.time(), message), **log_args)
+            six.print_("\r[{}] {} {:.2f}%".format(
+                    datetime.fromtimestamp(self._log_start_time).isoformat(),
+                    message, progress),
+                **log_args)
+
+    def clear_progress(self):
+        if self.verbose:
+            six.print_("\r", end="", flush=True)
 
     def log_done(self):
-        print("Done")
+        print("Done ({0:.3f}s)".format(time.time() - self._log_start_time))
 
     def __init__(self, verbose=False):
         """
@@ -207,11 +218,12 @@ class EchoMobileSession(object):
 
             if task["total"] != 0:
                 progress = task["progress"] / task["total"] * 100
-                self.log_replace_line("Waiting for report to generate... {0:.2f}%".format(progress), end="", flush=True)
+                self.log_progress("Waiting for report to generate... ", progress, end="", flush=True)
 
             report_status = task["status"]
 
-        self.log_replace_line("Waiting for report to generate...", end="", flush=True)
+        self.clear_progress()
+        self.log("Waiting for report to generate... ", end="", flush=True)
         self.log_done()
 
         assert report_status == 3, "Report stopped generating, but with an unknown status"
