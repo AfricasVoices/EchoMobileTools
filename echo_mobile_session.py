@@ -26,13 +26,17 @@ class EchoMobileSession(object):
 
     def log(self, message, **log_args):
         if self.verbose:
-            six.print_(message, **log_args)
+            six.print_("[{}] {}".format(time.time(), message), **log_args)
 
     def log_start(self, message):
         self.log(message, end="", flush=True)
 
+    def log_replace_line(self, message, **log_args):
+        if self.verbose:
+            six.print_("\r[{}] {}".format(time.time(), message), **log_args)
+
     def log_done(self):
-        self.log("Done")
+        print("Done")
 
     def __init__(self, verbose=False):
         """
@@ -203,11 +207,11 @@ class EchoMobileSession(object):
 
             if task["total"] != 0:
                 progress = task["progress"] / task["total"] * 100
-                self.log("\rWaiting for report to generate... {0:.2f}%".format(progress), end="", flush=True)
+                self.log_replace_line("Waiting for report to generate... {0:.2f}%".format(progress), end="", flush=True)
 
             report_status = task["status"]
 
-        self.log("\rWaiting for report to generate...")
+        self.log_replace_line("Waiting for report to generate...", end="", flush=True)
         self.log_done()
 
         assert report_status == 3, "Report stopped generating, but with an unknown status"
