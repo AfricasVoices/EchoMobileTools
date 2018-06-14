@@ -41,6 +41,7 @@ if __name__ == "__main__":
             TracedDataJsonIO.export_traced_data_iterable_to_json(data, f, pretty_print=True)
 
         # Write the parsed items to a csv file
+        # TODO: Accept path as a commond line argument.
         output_path_csv = "output.csv"
         if os.path.dirname(output_path_csv) is not "" and not os.path.exists(os.path.dirname(output_path_csv)):
             os.makedirs(os.path.dirname(output_path_csv))
