@@ -38,8 +38,8 @@ class EchoMobileSession(object):
     def log_progress(self, message, progress, **log_args):
         if self.verbose:
             six.print_("\r[{}] {} {:.2f}%".format(
-                    datetime.fromtimestamp(self._log_start_time).isoformat(),
-                    message, progress),
+                datetime.fromtimestamp(self._log_start_time).isoformat(),
+                message, progress),
                 **log_args)
 
     def clear_progress(self):
@@ -151,19 +151,17 @@ class EchoMobileSession(object):
 
     def groups(self):
         """Returns the list of groups available to the logged in user/account"""
-        if self.verbose:
-            six.print_("Fetching available groups... ", end="", flush=True)
+        self.log_start("Fetching available groups... ")
 
         request = self.session.get(self.BASE_URL + "cms/group")
         response = request.json()
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        if self.verbose:
-            print("Done")
-            print("  Groups found for this user/account:")
-            for group in response["groups"]:
-                print("    " + group["name"])
+        self.log_done()
+        self.log("  Groups found for this user/account:")
+        for group in response["groups"]:
+            self.log("    " + group["name"])
 
         return response["groups"]
 
@@ -187,8 +185,7 @@ class EchoMobileSession(object):
 
         group_key = matching_groups[0]["key"]
 
-        if self.verbose:
-            print("Key for group '{}' is '{}'".format(group_name, group_key))
+        self.log("Key for group '{}' is '{}'".format(group_name, group_key))
 
         return group_key
 
@@ -313,8 +310,7 @@ class EchoMobileSession(object):
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
-        elif self.verbose:
-            print("Done")
+        self.log_done()
 
         report_key = response["rkey"]
         self.background_tasks.add("report_" + report_key)
@@ -350,8 +346,7 @@ class EchoMobileSession(object):
             contact_fields = ["group", "upload_date"]
 
         if group_key is None:
-            if self.verbose:
-                six.print_("Requesting generation of report for global inbox... ", end="", flush=True)
+            self.log_start("Requesting generation of report for global inbox... ")
 
             request = self.session.post(self.BASE_URL + "cms/report/generate",
                                         params={
@@ -361,8 +356,7 @@ class EchoMobileSession(object):
                                             "std_field": ",".join(contact_fields)
                                         })
         else:
-            if self.verbose:
-                six.print_("Requesting generation of report for inbox '{}'... ".format(group_key), end="", flush=True)
+            self.log_start("Requesting generation of report for inbox '{}'... ".format(group_key))
 
             request = self.session.post(self.BASE_URL + "cms/report/generate",
                                         params={
@@ -383,8 +377,9 @@ class EchoMobileSession(object):
         self.background_tasks.add("report_" + report_key)
 
         if wait_until_generated:
-            print("About to wait for an inbox report to generate. "
-                  "Note that progress will always report 0% until done, due to an Echo Mobile bug.")
+            if group_key is None:
+                self.log("About to wait for an inbox report to generate. "
+                         "Note that progress will always report 0% until done, due to an Echo Mobile bug.")
             self.await_report_generated(report_key)
 
         return report_key
