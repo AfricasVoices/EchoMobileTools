@@ -55,7 +55,7 @@ if __name__ == "__main__":
     uuid_table = PhoneNumberUuidTable()
     for row in csv.DictReader(StringIO(report)):
         row["avf_phone_id"] = uuid_table.add_phone(row["Phone"])
-        row["avf_message_id"] = IDUtils.generate_uuid("av-message-uuid-")
+        row["avf_message_id"] = IDUtils.generate_uuid("avf-message-uuid-")
         del row["Phone"]
         del row["Sender"]
         messages.append(TracedData(dict(row), Metadata(user, Metadata.get_call_location(), time.time())))
