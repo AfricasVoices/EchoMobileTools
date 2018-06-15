@@ -23,11 +23,6 @@ This project is configured to use Python 3.6 by default, but all code is Python 
 ### Configuring Parameters
 By default, the raw and labelled responses are downloaded, along with the name and phone number fields.
 
-To change this, set the `gen` parameter of the `report_generate_request` to a comma-separated list of the datatypes 
-to download e.g. `gen: "raw,label,value,score"`.
-
-To change the contact options, similarly set the `std_field` parameter in `report_generate_request` to a comma separated list,
-using one or more of the following options: 
-`name,phone,internal_id,group,referrer,referrer_phone,upload_date,last_survey_complete_date,geo,locationTextRaw,labels,linked_entity,opted_out`
-
-Refer to the Echo Mobile export page for a survey for more details on each option.
+To change this, set the `response_formats` and `contact_fields` parameters of the call 
+to `session.report_for_survey_name` in `fetch_report.py`. Refer to the documentation for that function for the full
+list of options.
