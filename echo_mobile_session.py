@@ -344,7 +344,7 @@ class EchoMobileSession(object):
                                         })
         else:
             if self.verbose:
-                six.print_("Requesting generation of report for inbox {}... ".format(group_key), end="", flush=True)
+                six.print_("Requesting generation of report for inbox '{}'... ".format(group_key), end="", flush=True)
 
             request = self.session.post(self.BASE_URL + "cms/report/generate",
                                         params={
