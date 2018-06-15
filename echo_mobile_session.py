@@ -20,7 +20,7 @@ class EchoMobileSession(object):
     >>> session = EchoMobileSession()
     >>> session.login(<USERNAME>, <PASSWORD>)
     >>> session.use_account_with_name(<ACCOUNT_NAME>)  # Optional for users with only one account
-    >>> report = session.report_for_survey_name(<SURVEY_NAME>)
+    >>> report = session.survey_report_for_name(<SURVEY_NAME>)
     >>> session.delete_session_background_tasks()  # Removes the report background task from the Echo Mobile website.
     """
     BASE_URL = "https://www.echomobile.org/api/"
@@ -38,8 +38,8 @@ class EchoMobileSession(object):
     def log_progress(self, message, progress, **log_args):
         if self.verbose:
             six.print_("\r[{}] {} {:.2f}%".format(
-                    datetime.fromtimestamp(self._log_start_time).isoformat(),
-                    message, progress),
+                datetime.fromtimestamp(self._log_start_time).isoformat(),
+                message, progress),
                 **log_args)
 
     def clear_progress(self):
@@ -149,6 +149,46 @@ class EchoMobileSession(object):
         """
         self.use_account_with_key(self.account_key_for_name(account_name))
 
+    def groups(self):
+        """Returns the list of groups available to the logged in user/account"""
+        self.log_start("Fetching available groups... ")
+
+        request = self.session.get(self.BASE_URL + "cms/group")
+        response = request.json()
+
+        if not response["success"]:
+            raise EchoMobileError(response["message"])
+        self.log_done()
+        self.log("  Groups found for this user/account:")
+        for group in response["groups"]:
+            self.log("    " + group["name"])
+
+        return response["groups"]
+
+    def group_key_for_name(self, group_name):
+        """
+        Returns the key of the group with the given name.
+
+        :param group_name: Name of group to get the key of
+        :type group_name: str
+        :return: Key of group
+        :rtype: str
+        """
+        groups = self.groups()
+        matching_groups = [group for group in groups if group["name"] == group_name]
+
+        if len(matching_groups) == 0:
+            raise KeyError("Requested group not found on Echo Mobile (Available groups: " +
+                           ",".join(list(map(lambda g: g["name"], groups))) + ")")
+
+        assert len(matching_groups) == 1, "Multiple surveys with name " + group_name
+
+        group_key = matching_groups[0]["key"]
+
+        self.log("Key for group '{}' is '{}'".format(group_name, group_key))
+
+        return group_key
+
     def surveys(self):
         """
         Returns the list of active surveys available to the logged in user/account.
@@ -248,6 +288,8 @@ class EchoMobileSession(object):
         :param wait_until_generated: Whether to wait for the report to finish generating on the Echo Mobile server
                                      before returning.
         :type wait_until_generated: bool
+        :return: Key of report being generated
+        :rtype: str
         """
         if response_formats is None:
             response_formats = ["raw", "label"]
@@ -278,6 +320,70 @@ class EchoMobileSession(object):
 
         return report_key
 
+    def generate_inbox_report(self, group_key=None, contact_fields=None, wait_until_generated=True):
+        """
+        Generates a report containing the messages in an account's inbox.
+
+        Note that this function only triggers the generation of a report. Completed reports must be downloaded with
+        download_survey_report.
+
+        :param group_key: Key of group to generate report for.
+                          If None, generates a report for the account's global inbox.
+        :type group_key: str
+        :param contact_fields: List of additional contact fields to download.
+                               Defaults to ["group", "upload_date"] if None.
+                               "Sender" and "Phone" are always downloaded.
+                               The full list of options is: internal_id, group, referrer, upload_date,
+                               last_survey_complete_date, geo, locationTextRaw, labels
+        :type contact_fields: list of str
+        :param wait_until_generated: Whether to wait for the report to finish generating on the Echo Mobile server
+                                     before returning.
+        :type wait_until_generated: bool
+        :return: Key of report being generated
+        :rtype: str
+        """
+        if contact_fields is None:
+            contact_fields = ["group", "upload_date"]
+
+        if group_key is None:
+            self.log_start("Requesting generation of report for global inbox... ")
+
+            request = self.session.post(self.BASE_URL + "cms/report/generate",
+                                        params={
+                                            # type and ftype were determined by inspecting the calls the website
+                                            # was making.
+                                            "type": 11, "ftype": 1,
+                                            "std_field": ",".join(contact_fields)
+                                        })
+        else:
+            self.log_start("Requesting generation of report for inbox '{}'... ".format(group_key))
+
+            request = self.session.post(self.BASE_URL + "cms/report/generate",
+                                        params={
+                                            # type and ftype were determined by inspecting the calls the website
+                                            # was making.
+                                            "type": 10, "ftype": 1,
+                                            "target": group_key,
+                                            "std_field": ",".join(contact_fields)
+                                        })
+
+        response = request.json()
+
+        if not response["success"]:
+            raise EchoMobileError(response["message"])
+        self.log_done()
+
+        report_key = response["rkey"]
+        self.background_tasks.add("report_" + report_key)
+
+        if wait_until_generated:
+            if group_key is None:
+                self.log("About to wait for an inbox report to generate. "
+                         "Note that progress will always report 0% until done, due to an Echo Mobile bug.")
+            self.await_report_generated(report_key)
+
+        return report_key
+
     def download_report(self, report_key):
         """
         Downloads the specified report from Echo Mobile.
@@ -298,7 +404,7 @@ class EchoMobileSession(object):
 
         return response
 
-    def report_for_survey_key(self, survey_key, contact_fields=None, response_formats=None):
+    def survey_report_for_key(self, survey_key, contact_fields=None, response_formats=None):
         """
         Generates and downloads a report for the survey with the given key.
 
@@ -319,7 +425,7 @@ class EchoMobileSession(object):
                                                  response_formats=response_formats, wait_until_generated=True)
         return self.download_report(report_key)
 
-    def report_for_survey_name(self, survey_name, contact_fields=None, response_formats=None):
+    def survey_report_for_name(self, survey_name, contact_fields=None, response_formats=None):
         """
         Generates and downloads a report for the survey with the given name.
 
@@ -336,8 +442,80 @@ class EchoMobileSession(object):
         :return: CSV containing the survey report
         :rtype: str
         """
-        return self.report_for_survey_key(self.survey_key_for_name(survey_name), contact_fields=contact_fields,
+        return self.survey_report_for_key(self.survey_key_for_name(survey_name), contact_fields=contact_fields,
                                           response_formats=response_formats)
+
+    def global_inbox_report(self, contact_fields=None):
+        """
+        Generates and downloads a report for the current account's global inbox.
+
+        :param contact_fields: List of additional contact fields to download.
+                               Defaults to ["group", "upload_date"] if None.
+                               "Sender" and "Phone" are always downloaded.
+                               The full list of options is: internal_id, group, referrer, upload_date,
+                               last_survey_complete_date, geo, locationTextRaw, labels
+        :type contact_fields: list of str
+        :return: CSV containing the inbox report
+        :rtype: str
+        """
+        return self.download_report(
+            self.generate_inbox_report(contact_fields=contact_fields, wait_until_generated=True))
+
+    def group_inbox_report_for_key(self, group_key, contact_fields=None):
+        """
+        Generates and downloads an inbox report for the group with the given key.
+
+        :param group_key: Key of group to download inbox of
+        :type group_key: str
+        :param contact_fields: List of additional contact fields to download.
+                               Defaults to ["group", "upload_date"] if None.
+                               "Sender" and "Phone" are always downloaded.
+                               The full list of options is: internal_id, group, referrer, upload_date,
+                               last_survey_complete_date, geo, locationTextRaw, labels
+        :type contact_fields: list of str
+        :return: CSV containing the inbox report
+        :rtype: str
+        """
+        report_key = self.generate_inbox_report(group_key=group_key,
+                                                contact_fields=contact_fields, wait_until_generated=True)
+        return self.download_report(report_key)
+
+    def group_inbox_report_for_name(self, group_name, contact_fields=None):
+        """
+        Generates and downloads an inbox report for the group with the given name.
+
+        :param group_name: Name of group to download inbox of
+        :type group_name: str
+        :param contact_fields: List of additional contact fields to download.
+                               Defaults to ["group", "upload_date"] if None.
+                               "Sender" and "Phone" are always downloaded.
+                               The full list of options is: internal_id, group, referrer, upload_date,
+                               last_survey_complete_date, geo, locationTextRaw, labels
+        :type contact_fields: list of str
+        :return: CSV containing the inbox report
+        :rtype: str
+        """
+        return self.group_inbox_report_for_key(self.group_key_for_name(group_name), contact_fields=contact_fields)
+
+    def inbox_report(self, group_name=None, contact_fields=None):
+        """
+        Generates and downloads an inbox report.
+
+        :param group_name: Name of group to download inbox of. If None, downloads from the global inbox.
+        :type group_name: str
+        :param contact_fields: List of additional contact fields to download.
+                               Defaults to ["group", "upload_date"] if None.
+                               "Sender" and "Phone" are always downloaded.
+                               The full list of options is: internal_id, group, referrer, upload_date,
+                               last_survey_complete_date, geo, locationTextRaw, labels
+        :type contact_fields: list of str
+        :return: CSV containing the inbox report
+        :rtype: str
+        """
+        if group_name is None:
+            return self.global_inbox_report(contact_fields=contact_fields)
+        else:
+            return self.group_inbox_report_for_name(group_name, contact_fields=contact_fields)
 
     def delete_background_task(self, task_key):
         """
