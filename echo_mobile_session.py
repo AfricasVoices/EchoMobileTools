@@ -229,6 +229,8 @@ class EchoMobileSession(object):
         :param wait_until_generated: Whether to wait for the report to finish generating on the Echo Mobile server
                                      before returning.
         :type wait_until_generated: bool
+        :return: Key of report being generated
+        :rtype: str
         """
         if response_formats is None:
             response_formats = ["raw", "label"]
@@ -261,18 +263,37 @@ class EchoMobileSession(object):
 
         return report_key
 
-    def generate_global_inbox_report(self, wait_until_generated=True):
+    def generate_global_inbox_report(self, contact_fields=None, wait_until_generated=True):
+        """
+        Generates a report containing all the messages in an account's global inbox.
+
+        Note that this function only triggers the generation of a report. Completed reports must be downloaded with
+        download_survey_report.
+
+        :param contact_fields: List of additional contact fields to download.
+                               Defaults to ["group", "upload_date"] if None.
+                               "Sender" and "Phone" are always downloaded.
+                               The full list of options is: internal_id, group, referrer, upload_date,
+                               last_survey_complete_date, geo, locationTextRaw, labels
+        :type contact_fields: list of str
+        :param wait_until_generated: Whether to wait for the report to finish generating on the Echo Mobile server
+                                     before returning.
+        :type wait_until_generated: bool
+        :return: Key of report being generated
+        :rtype: str
+        """
         if self.verbose:
             six.print_("Requesting generation of report for global inbox... ", end="", flush=True)
+
+        if contact_fields is None:
+            contact_fields = ["group", "upload_date"]
 
         request = self.session.post(self.BASE_URL + "cms/report/generate",
                                     params={
                                         # type and ftype were determined by inspecting the calls the website
                                         # was making.
                                         "type": 11, "ftype": 1,
-                                        "std_field": "internal_id,group,referrer,upload_date,"
-                                                     "last_survey_complete_date,"
-                                                     "geo,locationTextRaw,labels"
+                                        "std_field": ",".join(contact_fields)
                                     })
         response = request.json()
 
