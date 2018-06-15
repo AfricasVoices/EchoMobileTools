@@ -25,8 +25,8 @@ if __name__ == "__main__":
     parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
     parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
     parser.add_argument("account", help="Name of Echo Mobile organisation to log into", nargs=1)
-    parser.add_argument("--inbox", help="Only download messages from the specified inbox", type=str)
-    parser.add_argument("uuid_output", metavar="uuid-table-output",
+    parser.add_argument("--inbox", help="Only download messages from the specified inbox name")
+    parser.add_argument("uuid_output", metavar="uuid-table-output", nargs=1,
                         help="JSON file to write phone number/UUID lookup table to")
     parser.add_argument("json_output", metavar="json-output", help="JSON file to write serialized data to", nargs=1)
 
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     echo_mobile_password = args.echo_mobile_password[0]
     account_name = args.account[0]
     inbox = args.inbox
-    uuid_table_output_path = args.uuid_output[0]
+    uuid_output_path = args.uuid_output[0]
     json_output_path = args.json_output[0]
 
     session = EchoMobileSession(verbose=verbose_mode)
@@ -61,9 +61,9 @@ if __name__ == "__main__":
         messages.append(TracedData(dict(row), Metadata(user, Metadata.get_call_location(), time.time())))
 
     # Write the UUIDs out to a file
-    if os.path.dirname(uuid_table_output_path) is not "" and not os.path.exists(os.path.dirname(uuid_table_output_path)):
-        os.makedirs(os.path.dirname(uuid_table_output_path))
-    with open(uuid_table_output_path, "w") as f:
+    if os.path.dirname(uuid_output_path) is not "" and not os.path.exists(os.path.dirname(uuid_output_path)):
+        os.makedirs(os.path.dirname(uuid_output_path))
+    with open(uuid_output_path, "w") as f:
         uuid_table.dump(f)
 
     # Write the parsed messages to a json file
