@@ -1,8 +1,8 @@
 import time
 from datetime import datetime
 
-import six
 import requests
+import six
 
 
 class EchoMobileError(Exception):
@@ -175,7 +175,7 @@ class EchoMobileSession(object):
         :rtype: str
         """
         groups = self.groups()
-        matching_groups = [group for group in groups if group["name"] == group_name]
+        matching_groups = [g for g in groups if g["name"] == group_name]
 
         if len(matching_groups) == 0:
             raise KeyError("Requested group not found on Echo Mobile (Available groups: " +
@@ -218,7 +218,7 @@ class EchoMobileSession(object):
         :rtype: str
         """
         surveys = self.surveys()
-        matching_surveys = [survey for survey in surveys if survey["name"] == survey_name]
+        matching_surveys = [s for s in surveys if s["name"] == survey_name]
 
         if len(matching_surveys) == 0:
             raise KeyError("Requested survey not found on Echo Mobile (Available surveys: " +
