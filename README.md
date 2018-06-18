@@ -39,7 +39,7 @@ where:
 
 To generate and download a report for the inbox of a specific group, add the flag `--inbox <group-name>`.
 
-To generate a new, empty phone number <-> UUID table if one does not already exist, use
+To generate a new, empty phone number <-> UUID table, use
 `$ sh make-new-number-uuid-table.sh <output_path>` where `<output_path>` is a path to a JSON file.
 For example `$ sh make-new-number-uuid-table.sh uuid_table.json`.
    
