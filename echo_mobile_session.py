@@ -12,6 +12,27 @@ class EchoMobileError(Exception):
     pass
 
 
+class ReportType(object):
+    """
+    Contains the report types which Echo Mobile can export, and the corresponding ids used by Echo Mobile
+    for each report type.
+    """
+    # These IDs were determined by inspecting the REST calls which the website was making when generating reports.
+    InboxReport = 10
+    SearchReport = 11
+    SurveyReport = 13
+
+
+class FileType(object):
+    """
+    Contains the file types which Echo Mobile can export reports to, and the corresponding ids used by Echo Mobile
+    for each file type.
+    """
+    # These IDs were determined by inspecting the REST calls which the website was making when generating reports.
+    CSV = 1
+    TSV = 5
+
+
 class EchoMobileSession(object):
     """
     A client-side API for interacting with Echo Mobile servers.
@@ -26,6 +47,15 @@ class EchoMobileSession(object):
     BASE_URL = "https://www.echomobile.org/api/"
 
     _log_start_time = 0
+
+    def __init__(self, verbose=False):
+        """
+        :param verbose: Whether to initialise with verbose mode enabled.
+        :type verbose: bool
+        """
+        self.session = requests.Session()
+        self.verbose = verbose
+        self.background_tasks = set()
 
     def log(self, message, **log_args):
         if self.verbose:
@@ -48,15 +78,6 @@ class EchoMobileSession(object):
 
     def log_done(self):
         print("Done ({0:.3f}s)".format(time.time() - self._log_start_time))
-
-    def __init__(self, verbose=False):
-        """
-        :param verbose: Whether to initialise with verbose mode enabled.
-        :type verbose: bool
-        """
-        self.session = requests.Session()
-        self.verbose = verbose
-        self.background_tasks = set()
 
     def login(self, username, password):
         """
@@ -299,9 +320,8 @@ class EchoMobileSession(object):
         self.log_start("Requesting generation of report for survey '{}'... ".format(survey_key))
 
         request = self.session.post(self.BASE_URL + "cms/report/generate",
-                                    # Type is undocumented, but from inspection of the calls the website is
-                                    # making it turns out that '13' is the magic number we need here.
-                                    params={"type": 13, "target": survey_key,
+                                    params={"type": ReportType.SurveyReport, "ftype": FileType.CSV,
+                                            "target": survey_key,
                                             "gen": ",".join(response_formats),
                                             "std_field": ",".join(contact_fields)
                                             }
@@ -350,9 +370,7 @@ class EchoMobileSession(object):
 
             request = self.session.post(self.BASE_URL + "cms/report/generate",
                                         params={
-                                            # type and ftype were determined by inspecting the calls the website
-                                            # was making.
-                                            "type": 11, "ftype": 1,
+                                            "type": ReportType.SearchReport, "ftype": FileType.CSV,
                                             "std_field": ",".join(contact_fields)
                                         })
         else:
@@ -360,9 +378,7 @@ class EchoMobileSession(object):
 
             request = self.session.post(self.BASE_URL + "cms/report/generate",
                                         params={
-                                            # type and ftype were determined by inspecting the calls the website
-                                            # was making.
-                                            "type": 10, "ftype": 1,
+                                            "type": ReportType.InboxReport, "ftype": FileType.CSV,
                                             "target": group_key,
                                             "std_field": ",".join(contact_fields)
                                         })
