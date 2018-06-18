@@ -8,7 +8,7 @@ from core_data_modules.traced_data import TracedData, Metadata
 from core_data_modules.traced_data.io import TracedDataJsonIO
 from core_data_modules.util import PhoneNumberUuidTable, IDUtils
 
-from echo_mobile_session import EchoMobileSession
+from echo_mobile_session import EchoMobileSession, echo_mobile_date_to_iso
 
 if six.PY2:
     import unicodecsv as csv
@@ -62,6 +62,13 @@ if __name__ == "__main__":
         del row["Phone"]
         del row["Sender"]
         messages.append(TracedData(dict(row), Metadata(user, Metadata.get_call_location(), time.time())))
+
+    # Convert times to ISO
+    for td in messages:
+        td.append_data(
+            {"upload_date": echo_mobile_date_to_iso(td["upload_date"])},
+            Metadata(user, Metadata.get_call_location(), time.time())
+        )
 
     # Write the UUIDs out to a file
     with open(uuid_path, "w") as f:

@@ -1,8 +1,31 @@
 import time
 from datetime import datetime
 
+import pytz
 import requests
 import six
+
+
+def echo_mobile_date_to_iso(date):
+    """
+    Converts a date from Echo Mobile's export format to an ISO 8601 string.
+
+    >>> echo_mobile_date_to_iso('2018-06-01 19:20 EAT')
+    '2018-06-01T19:20+03:00'
+
+    :param date: String in the format 'YY-MM-DD hh:mm EAT'
+    :type date: str
+    :return: String in the format 'YYYY-MM-DDThh:mm:ss+/-hh:mm'
+    :rtype: str
+    """
+    # Parse date into a datetime object. This will fail if date is not in EAT.
+    parsed = datetime.strptime(date, "%Y-%m-%d %H:%M EAT")
+
+    # Use the canonical IANA tz database entry for East African Time.
+    timezone = pytz.timezone("Africa/Nairobi")
+
+    # Use timezone.localize because pytz is incompatible with  datetime.replace(tzinfo=...).
+    return timezone.localize(parsed).isoformat()
 
 
 class EchoMobileError(Exception):
