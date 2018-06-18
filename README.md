@@ -27,17 +27,21 @@ where:
 ### Inbox Report
 To generate and download a global inbox report, and export to a TracedData JSON file:
 ```
-$ pipenv run python inbox_report.py <user> <echo-mobile-username> <echo-mobile-password> <account> <uuid-table-output> <json-output>
+$ pipenv run python inbox_report.py <user> <echo-mobile-username> <echo-mobile-password> <account> <uuid-table> <json-output>
 ```
 where:
 - `user` is the identifier of the user launching the program,
 - `echo-mobile-username` is the email address of the user to log in to Echo Mobile as,
 - `echo-mobile-password` is the password to use when logging into Echo Mobile,
 - `account` is the name of the Echo Mobile organisation to log into,
-- `uuid-table-output` is the the path to a JSON file to write the phone number <-> UUID table to, and
+- `uuid-table` is the the path to a JSON file containing an existing phone number <-> UUID table to use and update, and
 - `output` is the path to a JSON file where the report output should be written to.
 
 To generate and download a report for the inbox of a specific group, add the flag `--inbox <group-name>`.
+
+To generate a new, empty phone number <-> UUID table if one does not already exist, use
+`$ sh make-new-number-uuid-table.sh <output_path>` where `<output_path>` is a path to a JSON file.
+For example `$ sh make-new-number-uuid-table.sh uuid_table.json`.
    
 This project is configured to use Python 3.6 by default, but all code is Python 2.7 compliant.
 
