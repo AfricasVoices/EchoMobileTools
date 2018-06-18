@@ -3,13 +3,12 @@ import os
 import time
 from io import StringIO
 
+import six
 from core_data_modules.traced_data import TracedData, Metadata
-from core_data_modules.traced_data.io import TracedDataCSVIO, TracedDataJsonIO
+from core_data_modules.traced_data.io import TracedDataJsonIO, TracedDataTheInterfaceIO
 from core_data_modules.util import PhoneNumberUuidTable, IDUtils
 
 from echo_mobile_session import EchoMobileSession
-
-import six
 
 if six.PY2:
     import unicodecsv as csv
@@ -40,6 +39,8 @@ if __name__ == "__main__":
     uuid_output_path = args.uuid_output[0]
     json_output_path = args.json_output[0]
 
+    the_interface_output_directory = "keep/the_interface"
+
     session = EchoMobileSession(verbose=verbose_mode)
     try:
         # Download inbox report from Echo Mobile.
@@ -60,6 +61,17 @@ if __name__ == "__main__":
         del row["Sender"]
         messages.append(TracedData(dict(row), Metadata(user, Metadata.get_call_location(), time.time())))
 
+    # Take an arbitrary message from each person
+    # TODO: Find out how AVF would actually like us to export data in this situation
+    # TODO: (multiple messages from the same respondent)
+    seen_ids = set()
+    filtered_messages = []
+    for td in messages:
+        if td["avf_phone_id"] not in seen_ids:
+            seen_ids.add(td["avf_phone_id"])
+            filtered_messages.append(td)
+    messages = filtered_messages
+
     # Write the UUIDs out to a file
     if os.path.dirname(uuid_output_path) is not "" and not os.path.exists(os.path.dirname(uuid_output_path)):
         os.makedirs(os.path.dirname(uuid_output_path))
@@ -71,3 +83,11 @@ if __name__ == "__main__":
         os.makedirs(os.path.dirname(json_output_path))
     with open(json_output_path, "w") as f:
         TracedDataJsonIO.export_traced_data_iterable_to_json(messages, f, pretty_print=True)
+
+    # Write the parsed messages to files for use by The Interface
+    if not os.path.exists(os.path.dirname(the_interface_output_directory)):
+        os.makedirs(os.path.dirname(the_interface_output_directory))
+    TracedDataTheInterfaceIO.export_traced_data_iterable_to_the_interface(
+        messages, the_interface_output_directory, "avf_phone_id",
+        message_keys=["Message"]
+    )
