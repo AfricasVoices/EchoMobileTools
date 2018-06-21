@@ -635,24 +635,36 @@ class EchoMobileSession(object):
 
     def echo_mobile_date_to_iso(self, date, timezone=None):
         """
-        Converts a date from Echo Mobile's export format to an ISO 8601 string.
+        Converts a date from one of Echo Mobile's export formats to an ISO 8601 string.
 
-        >>> EchoMobileSession().echo_mobile_date_to_iso('2018-06-01 19:20', pytz.timezone("Africa/Nairobi"))
+        >>> EchoMobileSession().echo_mobile_date_to_iso("2018-06-01 19:20", pytz.timezone("Africa/Nairobi"))
         '2018-06-01T19:20:00+03:00'
+
+        Strings ending EAT are interpreted as UTC+3.
+        No other endings are supported.
+
+        >>> EchoMobileSession().echo_mobile_date_to_iso("2018-06-02 04:20 EAT")
+        '2018-06-02T04:20:00+03:00
 
         :param date: String in the format 'YY-MM-DD hh:mm'
         :type date: str
-        :param timezone: Timezone to interpret date in. 
-                         If None, uses the timezone information presented by Echo Mobile when the user logged in.
+        :param timezone: Timezone to interpret date in.
+                         If None, uses Africa/Nairobi if the string end with ' EAT', otherwise
+                         uses the timezone information presented by Echo Mobile when the user logged in.
         :type timezone: pytz.tzfile
         :return: String in the format 'YYYY-MM-DDThh:mm:ss+/-hh:mm'
         :rtype: str
         """
-        # Parse date into a datetime object.
-        parsed = datetime.strptime(date, "%Y-%m-%d %H:%M")
+        if date.endswith(" EAT"):
+            if timezone is None:
+                timezone = pytz.timezone("Africa/Nairobi")
+            date = date[:-4]
 
         if timezone is None:
             timezone = pytz.timezone(self.login_data["tz"])
 
-        # Use timezone.localize because pytz is incompatible with  datetime.replace(tzinfo=...).
+        # Parse date into a datetime object.
+        parsed = datetime.strptime(date, "%Y-%m-%d %H:%M")
+
+        # Use timezone.localize because pytz is incompatible with datetime.replace(tzinfo=...).
         return timezone.localize(parsed).isoformat()

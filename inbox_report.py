@@ -8,7 +8,7 @@ from core_data_modules.traced_data import TracedData, Metadata
 from core_data_modules.traced_data.io import TracedDataJsonIO
 from core_data_modules.util import PhoneNumberUuidTable, IDUtils
 
-from echo_mobile_session import EchoMobileSession, echo_mobile_date_to_iso
+from echo_mobile_session import EchoMobileSession
 
 if six.PY2:
     import unicodecsv as csv
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     # Convert times to ISO
     for td in messages:
         td.append_data(
-            {"upload_date": echo_mobile_date_to_iso(td["upload_date"])},
+            {key: session.echo_mobile_date_to_iso(td[key]) for key in ["Date", "upload_date"]},
             Metadata(user, Metadata.get_call_location(), time.time())
         )
 
