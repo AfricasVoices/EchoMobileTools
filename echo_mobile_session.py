@@ -649,7 +649,7 @@ class EchoMobileSession(object):
         :param date: String in the format 'YY-MM-DD hh:mm'
         :type date: str
         :param timezone: Timezone to interpret date in.
-                         If None, uses Africa/Nairobi if the string end with ' EAT', otherwise
+                         If None, uses Africa/Nairobi if the string ends with ' EAT', otherwise
                          uses the timezone information presented by Echo Mobile when the user logged in.
         :type timezone: pytz.tzfile
         :return: String in the format 'YYYY-MM-DDThh:mm:ss+/-hh:mm'
