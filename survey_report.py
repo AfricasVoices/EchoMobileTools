@@ -3,11 +3,17 @@ import os
 import time
 from io import StringIO
 
+import six
 from core_data_modules.traced_data import TracedData, Metadata
 from core_data_modules.traced_data.io import TracedDataJsonIO
 from core_data_modules.util import PhoneNumberUuidTable, IDUtils
 
 from echo_mobile_session import EchoMobileSession
+
+if six.PY2:
+    import unicodecsv as csv
+if six.PY3:
+    import csv
 
 if __name__ == "__main__":
     BASE_URL = "https://www.echomobile.org/api/"
