@@ -6,28 +6,6 @@ import requests
 import six
 
 
-def echo_mobile_date_to_iso(date):
-    """
-    Converts a date from Echo Mobile's export format to an ISO 8601 string.
-
-    >>> echo_mobile_date_to_iso('2018-06-01 19:20 EAT')
-    '2018-06-01T19:20+03:00'
-
-    :param date: String in the format 'YY-MM-DD hh:mm EAT'
-    :type date: str
-    :return: String in the format 'YYYY-MM-DDThh:mm:ss+/-hh:mm'
-    :rtype: str
-    """
-    # Parse date into a datetime object. This will fail if date is not in EAT.
-    parsed = datetime.strptime(date, "%Y-%m-%d %H:%M EAT")
-
-    # Use the canonical IANA tz database entry for East African Time.
-    timezone = pytz.timezone("Africa/Nairobi")
-
-    # Use timezone.localize because pytz is incompatible with  datetime.replace(tzinfo=...).
-    return timezone.localize(parsed).isoformat()
-
-
 class EchoMobileError(Exception):
     """
     Raised when the Echo Mobile server responded to a request with an error.
@@ -44,6 +22,14 @@ class ReportType(object):
     InboxReport = 10
     SearchReport = 11
     SurveyReport = 13
+    AllMessagesReport = 17
+
+
+class MessageDirection(object):
+    # These IDs were determined by inspecting the REST calls which the website was making when generating reports.
+    Incoming = 0
+    Outgoing = 1
+    Both = 2
 
 
 class FileType(object):
@@ -79,6 +65,7 @@ class EchoMobileSession(object):
         self.session = requests.Session()
         self.verbose = verbose
         self.background_tasks = set()
+        self.login_data = None
 
     def log(self, message, **log_args):
         if self.verbose:
@@ -122,6 +109,9 @@ class EchoMobileSession(object):
 
         if not response["success"]:
             raise EchoMobileError(response["message"])
+        
+        self.login_data = response
+
         self.log_done()
 
     def accounts(self):
@@ -312,43 +302,38 @@ class EchoMobileSession(object):
 
         assert report_status == 3, "Report stopped generating, but with an unknown status"
 
-    def generate_survey_report(self, survey_key, response_formats=None, contact_fields=None, wait_until_generated=True):
+    def generate_messages_report(self, start_date, end_date, direction=None, wait_until_generated=True):
         """
-        Starts the generation of a report for the given survey on Echo Mobile.
+        Starts the generation of a report containing all messages received by the current organisation within
+        the specified time range.
 
-        Note that this function only triggers the generation of a report. Completed reports must be downloaded with
-        download_survey_report.
-
-        :param survey_key: Key of survey to generate report for.
-        :type survey_key: str
-        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
-                                 The full list of options is : raw, label, value, score.
-        :type response_formats: list of str
-        :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
-                               The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
-                               upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
-                               opted_out.
-        :type contact_fields: list of str
+        :param start_date: Inclusive start date of message range to download. Must be in the format 'YYYY-MM-DD'.
+        :type start_date: str
+        :param end_date: Inclusive end date of message range to download. Must be in the format 'YYYY-MM-DD'.
+        :type end_date: str
+        :param direction: If not None, download only the messages in the specified direction.
+        :type direction: MessageDirection.value | None
         :param wait_until_generated: Whether to wait for the report to finish generating on the Echo Mobile server
                                      before returning.
         :type wait_until_generated: bool
-        :return: Key of report being generated
+        :return: Key of report being generated.
         :rtype: str
         """
-        if response_formats is None:
-            response_formats = ["raw", "label"]
-        if contact_fields is None:
-            contact_fields = ["name", "phone"]
+        self.log_start(
+            "Requesting generation of report for all messages in range {} to {}... ".format(start_date, end_date))
 
-        self.log_start("Requesting generation of report for survey '{}'... ".format(survey_key))
+        params = {
+            "type": ReportType.AllMessagesReport, "ftype": FileType.CSV,
+            "target": self.login_data["enterprise"]["key"],
+            "additionalSpecs": "direction,channel,filter_type",
+            "startDate": start_date, "endDate": end_date
+        }
+        
+        if direction is not None:
+            params["filter_type"] = "direction"
+            params["direction"] = direction
 
-        request = self.session.post(self.BASE_URL + "cms/report/generate",
-                                    params={"type": ReportType.SurveyReport, "ftype": FileType.CSV,
-                                            "target": survey_key,
-                                            "gen": ",".join(response_formats),
-                                            "std_field": ",".join(contact_fields)
-                                            }
-                                    )
+        request = self.session.post(self.BASE_URL + "cms/report/generate", params=params)
         response = request.json()
 
         if not response["success"]:
@@ -423,6 +408,57 @@ class EchoMobileSession(object):
 
         return report_key
 
+    def generate_survey_report(self, survey_key, response_formats=None, contact_fields=None, wait_until_generated=True):
+        """
+        Starts the generation of a report for the given survey on Echo Mobile.
+
+        Note that this function only triggers the generation of a report. Completed reports must be downloaded with
+        download_survey_report.
+
+        :param survey_key: Key of survey to generate report for.
+        :type survey_key: str
+        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
+                                 The full list of options is : raw, label, value, score.
+        :type response_formats: list of str
+        :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
+                               The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
+                               upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
+                               opted_out.
+        :type contact_fields: list of str
+        :param wait_until_generated: Whether to wait for the report to finish generating on the Echo Mobile server
+                                     before returning.
+        :type wait_until_generated: bool
+        :return: Key of report being generated
+        :rtype: str
+        """
+        if response_formats is None:
+            response_formats = ["raw", "label"]
+        if contact_fields is None:
+            contact_fields = ["name", "phone"]
+
+        self.log_start("Requesting generation of report for survey '{}'... ".format(survey_key))
+
+        request = self.session.post(self.BASE_URL + "cms/report/generate",
+                                    params={"type": ReportType.SurveyReport, "ftype": FileType.CSV,
+                                            "target": survey_key,
+                                            "gen": ",".join(response_formats),
+                                            "std_field": ",".join(contact_fields)
+                                            }
+                                    )
+        response = request.json()
+
+        if not response["success"]:
+            raise EchoMobileError(response["message"])
+        self.log_done()
+
+        report_key = response["rkey"]
+        self.background_tasks.add("report_" + report_key)
+
+        if wait_until_generated:
+            self.await_report_generated(report_key)
+
+        return report_key
+
     def download_report(self, report_key):
         """
         Downloads the specified report from Echo Mobile.
@@ -443,46 +479,22 @@ class EchoMobileSession(object):
 
         return response
 
-    def survey_report_for_key(self, survey_key, contact_fields=None, response_formats=None):
+    def messages_report(self, start_date, end_date, direction=None):
         """
-        Generates and downloads a report for the survey with the given key.
+        Generates and downloads a report for all messages in the current account which were sent/received
+        within the specified time range.
 
-        :param survey_key: Key of survey to generate and download report for
-        :type survey_key: str
-        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
-                                 The full list of options is : raw, label, value, score.
-        :type response_formats: list of str
-        :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
-                               The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
-                               upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
-                               opted_out.
-        :type contact_fields: list of str
-        :return: CSV containing the survey report
+        :param start_date: Inclusive start date of message range to download. Must be in the format 'YYYY-MM-DD'.
+        :type start_date: str
+        :param end_date: Inclusive end date of message range to download. Must be in the format 'YYYY-MM-DD'.
+        :type end_date: str
+        :param direction: If not None, download only the messages in the specified direction.
+        :type direction: MessageDirection.value | None
+        :return: CSV containing the messages report
         :rtype: str
         """
-        report_key = self.generate_survey_report(survey_key, contact_fields=contact_fields,
-                                                 response_formats=response_formats, wait_until_generated=True)
-        return self.download_report(report_key)
-
-    def survey_report_for_name(self, survey_name, contact_fields=None, response_formats=None):
-        """
-        Generates and downloads a report for the survey with the given name.
-
-        :param survey_name: Name of survey to generate and download report for
-        :type survey_name: str
-        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
-                                 The full list of options is : raw, label, value, score.
-        :type response_formats: list of str
-        :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
-                               The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
-                               upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
-                               opted_out.
-        :type contact_fields: list of str
-        :return: CSV containing the survey report
-        :rtype: str
-        """
-        return self.survey_report_for_key(self.survey_key_for_name(survey_name), contact_fields=contact_fields,
-                                          response_formats=response_formats)
+        return self.download_report(
+            self.generate_messages_report(start_date, end_date, direction, wait_until_generated=True))
 
     def global_inbox_report(self, contact_fields=None):
         """
@@ -556,6 +568,47 @@ class EchoMobileSession(object):
         else:
             return self.group_inbox_report_for_name(group_name, contact_fields=contact_fields)
 
+    def survey_report_for_key(self, survey_key, contact_fields=None, response_formats=None):
+        """
+        Generates and downloads a report for the survey with the given key.
+
+        :param survey_key: Key of survey to generate and download report for
+        :type survey_key: str
+        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
+                                 The full list of options is : raw, label, value, score.
+        :type response_formats: list of str
+        :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
+                               The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
+                               upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
+                               opted_out.
+        :type contact_fields: list of str
+        :return: CSV containing the survey report
+        :rtype: str
+        """
+        report_key = self.generate_survey_report(survey_key, contact_fields=contact_fields,
+                                                 response_formats=response_formats, wait_until_generated=True)
+        return self.download_report(report_key)
+
+    def survey_report_for_name(self, survey_name, contact_fields=None, response_formats=None):
+        """
+        Generates and downloads a report for the survey with the given name.
+
+        :param survey_name: Name of survey to generate and download report for
+        :type survey_name: str
+        :param response_formats: List of response formats to download. Defaults to ["raw", "label"] if None.
+                                 The full list of options is : raw, label, value, score.
+        :type response_formats: list of str
+        :param contact_fields: List of contact fields to download. Defaults to ["name", "phone"] if None.
+                               The full list of options is: name, phone, internal_id, group, referrer, referrer_phone,
+                               upload_date, last_survey_complete_date, geo, locationTextRaw, labels, linked_entity,
+                               opted_out.
+        :type contact_fields: list of str
+        :return: CSV containing the survey report
+        :rtype: str
+        """
+        return self.survey_report_for_key(self.survey_key_for_name(survey_name), contact_fields=contact_fields,
+                                          response_formats=response_formats)
+
     def delete_background_task(self, task_key):
         """
         Deletes the background task on Echo Mobile that has the given key.
@@ -579,3 +632,27 @@ class EchoMobileSession(object):
         for key in list(self.background_tasks):
             self.delete_background_task(key)
             self.background_tasks.remove(key)
+
+    def echo_mobile_date_to_iso(self, date, timezone=None):
+        """
+        Converts a date from Echo Mobile's export format to an ISO 8601 string.
+
+        >>> EchoMobileSession().echo_mobile_date_to_iso('2018-06-01 19:20', pytz.timezone("Africa/Nairobi"))
+        '2018-06-01T19:20:00+03:00'
+
+        :param date: String in the format 'YY-MM-DD hh:mm'
+        :type date: str
+        :param timezone: Timezone to interpret date in. 
+                         If None, uses the timezone information presented by Echo Mobile when the user logged in.
+        :type timezone: pytz.tzfile
+        :return: String in the format 'YYYY-MM-DDThh:mm:ss+/-hh:mm'
+        :rtype: str
+        """
+        # Parse date into a datetime object.
+        parsed = datetime.strptime(date, "%Y-%m-%d %H:%M")
+
+        if timezone is None:
+            timezone = pytz.timezone(self.login_data["tz"])
+
+        # Use timezone.localize because pytz is incompatible with  datetime.replace(tzinfo=...).
+        return timezone.localize(parsed).isoformat()
