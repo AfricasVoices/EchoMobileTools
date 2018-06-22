@@ -66,7 +66,10 @@ if __name__ == "__main__":
     # Convert times to ISO
     for td in messages:
         td.append_data(
-            {key: session.echo_mobile_date_to_iso(td[key]) for key in ["Date", "upload_date"]},
+            {
+                "Date": session.echo_mobile_date_to_iso(td["Date"]),
+                "upload_date": session.echo_mobile_date_to_iso(td["upload_date"]),
+            },
             Metadata(user, Metadata.get_call_location(), time.time())
         )
 

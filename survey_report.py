@@ -65,8 +65,12 @@ if __name__ == "__main__":
     # Convert times to ISO
     for td in data:
         td.append_data(
-            {key: None if td[key] == "" else session.echo_mobile_date_to_iso(td[key])
-             for key in ["invite_date", "start_date", "complete_date"]},
+            {
+                "invited_date": session.echo_mobile_date_to_iso(td["invite_date"]),
+                "start_date": session.echo_mobile_date_to_iso(td["start_date"]),
+                "complete_date":
+                    None if td["complete_date"] == "" else session.echo_mobile_date_to_iso(td["complete_date"])
+            },
             Metadata(user, Metadata.get_call_location(), time.time())
         )
 
