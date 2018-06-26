@@ -4,6 +4,7 @@ from datetime import datetime
 import pytz
 import requests
 import six
+from dateutil.parser import isoparse
 
 
 class EchoMobileError(Exception):
@@ -668,3 +669,29 @@ class EchoMobileSession(object):
 
         # Use timezone.localize because pytz is incompatible with datetime.replace(tzinfo=...).
         return timezone.localize(parsed).isoformat()
+
+    @staticmethod
+    def normalise_message(d, sender_key, date_key, message_key):
+        """
+        Converts the given message object to a normal form for Echo Mobile messages.
+
+        :param d: Dictionary containing all the relevant information about the message.
+        :type d: frozendict-like of str -> str
+        :param sender_key: Key in d of the sender of the message.
+        :type sender_key: str
+        :param date_key: Key in d of the date field which represents when the message was sent.
+                         This must be in ISO format.
+        :type date_key: str
+        :param message_key: Key in d of the message text itself.
+        :type message_key: str
+        :return: Normalised representation, containing Sender, Date, and Message keys.
+                 The Date is converted to a UNIX timestamp, the Sender and Message strings are copied straight through.
+        :rtype: dict of str -> str | int
+        """
+        return {
+            "Sender": d[sender_key],
+            # Convert Date to UNIX timestamp in a Python 2-compatible way.
+            # Conversion to UTC accounts for timetuple() not preserving timezone information.
+            "Date": time.mktime(isoparse(d[date_key]).astimezone(pytz.utc).timetuple()),
+            "Message": d[message_key]
+        }
