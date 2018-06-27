@@ -6,7 +6,7 @@ from io import StringIO
 import six
 from core_data_modules.traced_data import TracedData, Metadata
 from core_data_modules.traced_data.io import TracedDataJsonIO
-from core_data_modules.util import PhoneNumberUuidTable, IDUtils
+from core_data_modules.util import PhoneNumberUuidTable
 
 from echo_mobile_session import EchoMobileSession
 
@@ -57,7 +57,6 @@ if __name__ == "__main__":
     data = []
     for row in csv.DictReader(StringIO(report)):
         row["avf_phone_id"] = uuid_table.add_phone(row["phone"])
-        row["avf_message_id"] = IDUtils.generate_uuid("avf-message-uuid-")
         del row["phone"]
         del row["name"]
         data.append(TracedData(dict(row), Metadata(user, Metadata.get_call_location(), time.time())))
