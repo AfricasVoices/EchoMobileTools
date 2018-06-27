@@ -668,3 +668,17 @@ class EchoMobileSession(object):
 
         # Use timezone.localize because pytz is incompatible with datetime.replace(tzinfo=...).
         return timezone.localize(parsed).isoformat()
+
+    def localize_datetime(self, dt):
+        """
+        Localizes a datetime object using the timezone this user is currently using with Echo Mobile.
+
+        This timezone is retrieved from Echo Mobile by the login method.
+
+        :param dt: Datetime to localize.
+        :type dt: datetime
+        :return: Localized datetime.
+        :rtype: datetime
+        """
+        timezone = pytz.timezone(self.login_data["tz"])
+        return dt.astimezone(timezone)

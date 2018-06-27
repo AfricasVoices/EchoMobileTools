@@ -7,6 +7,7 @@ import six
 from core_data_modules.traced_data import TracedData, Metadata
 from core_data_modules.traced_data.io import TracedDataJsonIO
 from core_data_modules.util import PhoneNumberUuidTable, IDUtils
+from dateutil.parser import isoparse
 
 from echo_mobile_session import EchoMobileSession, MessageDirection
 
@@ -24,10 +25,10 @@ if __name__ == "__main__":
     parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
     parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
     parser.add_argument("account", help="Name of Echo Mobile organisation to log into", nargs=1)
-    parser.add_argument("start_date", metavar="start-date", help="Inclusive start date of message range to download, "
-                                                                 "in the format 'YYYY-MM-DD'.", nargs=1)
-    parser.add_argument("end_date", metavar="end-date", help="Inclusive start date of message range to download, "
-                                                             "in the format 'YYYY-MM-DD'.", nargs=1)
+    parser.add_argument("start_date", metavar="start-date", help="Inclusive start date of message range to export, "
+                                                                 "in ISO format", nargs=1)
+    parser.add_argument("end_date", metavar="end-date", help="Inclusive start date of message range to export, "
+                                                             "in ISO format", nargs=1)
     parser.add_argument("uuid_table", metavar="uuid-table", nargs=1,
                         help="JSON file containing an existing phone number <-> UUID lookup table. "
                              "This file will be updated with the new phone numbers which are found by this process.")
@@ -39,8 +40,8 @@ if __name__ == "__main__":
     echo_mobile_username = args.echo_mobile_username[0]
     echo_mobile_password = args.echo_mobile_password[0]
     account_name = args.account[0]
-    start_date = args.start_date[0]
-    end_date = args.end_date[0]
+    start_date_string = args.start_date[0]
+    end_date_string = args.end_date[0]
     uuid_path = args.uuid_table[0]
     json_output_path = args.json_output[0]
 
@@ -53,7 +54,13 @@ if __name__ == "__main__":
         # Download inbox report from Echo Mobile.
         session.login(echo_mobile_username, echo_mobile_password)
         session.use_account_with_name(account_name)
-        report = session.messages_report(start_date, end_date, direction=MessageDirection.Incoming)
+
+        # Localize start/end dates
+        start_date = session.localize_datetime(isoparse(start_date_string))
+        end_date = session.localize_datetime(isoparse(end_date_string))
+
+        report = session.messages_report(
+            start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), direction=MessageDirection.Incoming)
     finally:
         # Delete the background task we made when generating the report
         session.delete_session_background_tasks()
@@ -72,6 +79,9 @@ if __name__ == "__main__":
             {"Date": session.echo_mobile_date_to_iso(td["Date"])},
             Metadata(user, Metadata.get_call_location(), time.time())
         )
+
+    # Filter out messages sent outwith the desired time range.
+    messages = list(filter(lambda td: start_date <= isoparse(td["Date"]) < end_date, messages))
 
     # Write the UUIDs out to a file
     with open(uuid_path, "w") as f:
