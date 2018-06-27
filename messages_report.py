@@ -6,7 +6,7 @@ from io import StringIO
 import six
 from core_data_modules.traced_data import TracedData, Metadata
 from core_data_modules.traced_data.io import TracedDataJsonIO
-from core_data_modules.util import PhoneNumberUuidTable, IDUtils
+from core_data_modules.util import PhoneNumberUuidTable, MessageUuidTable
 from dateutil.parser import isoparse
 
 from echo_mobile_session import EchoMobileSession, MessageDirection
@@ -29,9 +29,12 @@ if __name__ == "__main__":
                                                                  "in ISO format", nargs=1)
     parser.add_argument("end_date", metavar="end-date", help="Inclusive start date of message range to export, "
                                                              "in ISO format", nargs=1)
-    parser.add_argument("uuid_table", metavar="uuid-table", nargs=1,
+    parser.add_argument("phone_uuid_table", metavar="phone-uuid-table", nargs=1,
                         help="JSON file containing an existing phone number <-> UUID lookup table. "
                              "This file will be updated with the new phone numbers which are found by this process.")
+    parser.add_argument("message_uuid_table", metavar="message-uuid-table", nargs=1,
+                        help="JSON file containing an existing message -> UUID lookup table. "
+                             "This file will be updated with the new messages which are found by this process.")
     parser.add_argument("json_output", metavar="json-output", help="JSON file to write serialized data to", nargs=1)
 
     args = parser.parse_args()
@@ -42,12 +45,15 @@ if __name__ == "__main__":
     account_name = args.account[0]
     start_date_string = args.start_date[0]
     end_date_string = args.end_date[0]
-    uuid_path = args.uuid_table[0]
+    phone_uuid_path = args.phone_uuid_table[0]
+    message_uuid_path = args.message_uuid_table[0]
     json_output_path = args.json_output[0]
 
-    # Load the existing UUID table
-    with open(uuid_path, "r") as f:
-        uuid_table = PhoneNumberUuidTable.load(f)
+    # Load the existing UUID tables
+    with open(phone_uuid_path, "r") as f:
+        phone_uuids = PhoneNumberUuidTable.load(f)
+    with open(message_uuid_path, "r") as f:
+        message_uuids = MessageUuidTable.load(f)
 
     session = EchoMobileSession(verbose=verbose_mode)
     try:
@@ -68,8 +74,7 @@ if __name__ == "__main__":
     # Parse the downloaded report into a list of TracedData objects, de-identifying in the process.
     messages = []
     for row in csv.DictReader(StringIO(report)):
-        row["avf_phone_id"] = uuid_table.add_phone(row["Phone"])
-        row["avf_message_id"] = IDUtils.generate_uuid("avf-message-uuid-")
+        row["avf_phone_id"] = phone_uuids.add_phone(row["Phone"])
         del row["Phone"]
         messages.append(TracedData(dict(row), Metadata(user, Metadata.get_call_location(), time.time())))
 
@@ -83,9 +88,19 @@ if __name__ == "__main__":
     # Filter out messages sent outwith the desired time range.
     messages = list(filter(lambda td: start_date <= isoparse(td["Date"]) < end_date, messages))
 
+    # Add a unique id to each message
+    for td in messages:
+        td.append_data(
+            {"avf_message_id": message_uuids.add_message(
+                EchoMobileSession.normalise_message(td, "avf_phone_id", "Date", "Message"))},
+            Metadata(user, Metadata.get_call_location(), time.time())
+        )
+
     # Write the UUIDs out to a file
-    with open(uuid_path, "w") as f:
-        uuid_table.dump(f)
+    with open(phone_uuid_path, "w") as f:
+        phone_uuids.dump(f)
+    with open(message_uuid_path, "w") as f:
+        message_uuids.dump(f)
 
     # Write the parsed messages to a json file
     if os.path.dirname(json_output_path) is not "" and not os.path.exists(os.path.dirname(json_output_path)):
