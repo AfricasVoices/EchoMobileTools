@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-CoreDataModules = {git = "ssh://git@github.com/AfricasVoices/CoreDataModules.git", editable = true, ref = "b164f28a279cf471624830eab92438c727dca0ca"}
+CoreDataModules = {git = "ssh://git@github.com/AfricasVoices/CoreDataModules.git", editable = true, ref = "f2fe5828c429fbb7e516f76c9828d7a438d1b021"}
 requests = "*"
 pytz = "*"
 

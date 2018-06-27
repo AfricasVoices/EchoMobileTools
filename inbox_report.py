@@ -6,7 +6,7 @@ from io import StringIO
 import six
 from core_data_modules.traced_data import TracedData, Metadata
 from core_data_modules.traced_data.io import TracedDataJsonIO
-from core_data_modules.util import PhoneNumberUuidTable, IDUtils
+from core_data_modules.util import PhoneNumberUuidTable, MessageUuidTable
 
 from echo_mobile_session import EchoMobileSession
 
@@ -25,9 +25,12 @@ if __name__ == "__main__":
     parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
     parser.add_argument("account", help="Name of Echo Mobile organisation to log into", nargs=1)
     parser.add_argument("--inbox", help="Only download messages from the specified inbox name")
-    parser.add_argument("uuid_table", metavar="uuid-table", nargs=1,
+    parser.add_argument("phone_uuid_table", metavar="phone-uuid-table", nargs=1,
                         help="JSON file containing an existing phone number <-> UUID lookup table. "
                              "This file will be updated with the new phone numbers which are found by this process.")
+    parser.add_argument("message_uuid_table", metavar="message-uuid-table", nargs=1,
+                        help="JSON file containing an existing message -> UUID lookup table. "
+                             "This file will be updated with the new messages which are found by this process.")
     parser.add_argument("json_output", metavar="json-output", help="JSON file to write serialized data to", nargs=1)
 
     args = parser.parse_args()
@@ -37,12 +40,15 @@ if __name__ == "__main__":
     echo_mobile_password = args.echo_mobile_password[0]
     account_name = args.account[0]
     inbox = args.inbox
-    uuid_path = args.uuid_table[0]
+    phone_uuid_path = args.phone_uuid_table[0]
+    message_uuid_path = args.message_uuid_table[0]
     json_output_path = args.json_output[0]
 
     # Load the existing UUID table
-    with open(uuid_path, "r") as f:
-        uuid_table = PhoneNumberUuidTable.load(f)
+    with open(phone_uuid_path, "r") as f:
+        phone_uuids = PhoneNumberUuidTable.load(f)
+    with open(message_uuid_path, "r") as f:
+        message_uuids = MessageUuidTable.load(f)
 
     session = EchoMobileSession(verbose=verbose_mode)
     try:
@@ -57,8 +63,7 @@ if __name__ == "__main__":
     # Parse the downloaded report into a list of TracedData objects, de-identifying in the process.
     messages = []
     for row in csv.DictReader(StringIO(report)):
-        row["avf_phone_id"] = uuid_table.add_phone(row["Phone"])
-        row["avf_message_id"] = IDUtils.generate_uuid("avf-message-uuid-")
+        row["avf_phone_id"] = phone_uuids.add_phone(row["Phone"])
         del row["Phone"]
         del row["Sender"]
         messages.append(TracedData(dict(row), Metadata(user, Metadata.get_call_location(), time.time())))
@@ -73,9 +78,19 @@ if __name__ == "__main__":
             Metadata(user, Metadata.get_call_location(), time.time())
         )
 
+    # Add a unique id to each message
+    for td in messages:
+        td.append_data(
+            {"avf_message_id": message_uuids.add_message(
+                EchoMobileSession.normalise_message(td, "avf_phone_id", "Date", "Message"))},
+            Metadata(user, Metadata.get_call_location(), time.time())
+        )
+
     # Write the UUIDs out to a file
-    with open(uuid_path, "w") as f:
-        uuid_table.dump(f)
+    with open(phone_uuid_path, "w") as f:
+        phone_uuids.dump(f)
+    with open(message_uuid_path, "w") as f:
+        message_uuids.dump(f)
 
     # Write the parsed messages to a json file
     if os.path.dirname(json_output_path) is not "" and not os.path.exists(os.path.dirname(json_output_path)):
