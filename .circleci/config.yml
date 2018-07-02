@@ -2,7 +2,7 @@ version: 2
 jobs:
   python-3.6:
     docker:
-      - image: docker:18.03.0-ce-git # Outer Container (environment in which the core data container will be built)
+      - image: docker:18.03.0-ce-git # Outer Container (environment in which the echo mobile container will be built)
     steps:
       - checkout
       - setup_remote_docker
