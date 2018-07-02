@@ -16,4 +16,4 @@ RUN pipenv sync --dev
 ADD . /app
 
 # Run tests
-CMD pipenv run python -m pytest --doctest-modules --junitxml=test_results.xml
+CMD pipenv run python -m pytest --junitxml=test_results.xml --doctest-modules
