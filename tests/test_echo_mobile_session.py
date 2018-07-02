@@ -1,6 +1,7 @@
 import unittest
 
 import pytz
+from dateutil.parser import isoparse
 
 from echo_mobile_session import EchoMobileSession, NoSessionDataError
 
@@ -58,6 +59,29 @@ class TestEchoMobileSession(unittest.TestCase):
             session.echo_mobile_date_to_iso("2018-07-01 08:40", pytz.timezone("UTC")),
             "2018-07-01T08:40:00+00:00"
         )
+
+    def test_datetime_to_echo_mobile_datetime(self):
+        session = EchoMobileSession()
+
+        dt = isoparse("2018-07-02T19:40:00+03:00")
+
+        # Should fail if not logged in.
+        self.assertRaises(
+            NoSessionDataError,
+            lambda: session.datetime_to_echo_mobile_datetime(dt)
+        )
+
+        # Simulate effect of logging in which is relevant to the rest of this test case.
+        session.login_data = {"tz": "Africa/Nairobi"}
+
+        # Test normal data
+        self.assertEqual(session.datetime_to_echo_mobile_datetime(dt).isoformat(), "2018-07-02T19:40:00+03:00")
+
+        dt = isoparse("2018-07-02T19:40:00+01:00")
+        self.assertEqual(session.datetime_to_echo_mobile_datetime(dt).isoformat(), "2018-07-02T21:40:00+03:00")
+
+        dt = isoparse("2018-07-02T19:40:00Z")
+        self.assertEqual(session.datetime_to_echo_mobile_datetime(dt).isoformat(), "2018-07-02T22:40:00+03:00")
 
     def test_normalise_message(self):
         input_message = {

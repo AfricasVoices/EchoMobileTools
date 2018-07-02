@@ -69,8 +69,8 @@ if __name__ == "__main__":
         session.use_account_with_name(account_name)
 
         # Convert start/end dates into an Echo Mobile time zone.
-        echo_mobile_start_date = session.date_to_echo_mobile_timezone(user_start_date)
-        echo_mobile_end_date = session.date_to_echo_mobile_timezone(user_end_date)
+        echo_mobile_start_date = session.datetime_to_echo_mobile_datetime(user_start_date)
+        echo_mobile_end_date = session.datetime_to_echo_mobile_datetime(user_end_date)
 
         report = session.messages_report(
             echo_mobile_start_date.strftime("%Y-%m-%d"), echo_mobile_end_date.strftime("%Y-%m-%d"),
