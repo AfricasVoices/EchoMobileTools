@@ -27,7 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("account", help="Name of Echo Mobile organisation to log into", nargs=1)
     parser.add_argument("start_date", metavar="start-date", help="Inclusive start date of message range to export, "
                                                                  "in ISO format", nargs=1)
-    parser.add_argument("end_date", metavar="end-date", help="Inclusive start date of message range to export, "
+    parser.add_argument("end_date", metavar="end-date", help="Exclusive end date of message range to export, "
                                                              "in ISO format", nargs=1)
     parser.add_argument("phone_uuid_table", metavar="phone-uuid-table", nargs=1,
                         help="JSON file containing an existing phone number <-> UUID lookup table. "
@@ -43,11 +43,18 @@ if __name__ == "__main__":
     echo_mobile_username = args.echo_mobile_username[0]
     echo_mobile_password = args.echo_mobile_password[0]
     account_name = args.account[0]
-    start_date_string = args.start_date[0]
-    end_date_string = args.end_date[0]
+    start_date_iso = args.start_date[0]
+    end_date_iso = args.end_date[0]
     phone_uuid_path = args.phone_uuid_table[0]
     message_uuid_path = args.message_uuid_table[0]
     json_output_path = args.json_output[0]
+
+    # Parse the provided ISO dates
+    user_start_date = isoparse(start_date_iso)
+    user_end_date = isoparse(end_date_iso)
+
+    # TODO: Test that isoparse is only accepting dates with time-zone offsets.
+    # TODO: Print a helpful message if the user enters an invalid ISO date.
 
     # Load the existing UUID tables
     with open(phone_uuid_path, "r") as f:
@@ -61,12 +68,13 @@ if __name__ == "__main__":
         session.login(echo_mobile_username, echo_mobile_password)
         session.use_account_with_name(account_name)
 
-        # Localize start/end dates
-        start_date = session.localize_datetime(isoparse(start_date_string))
-        end_date = session.localize_datetime(isoparse(end_date_string))
+        # Convert start/end dates into an Echo Mobile time zone.
+        echo_mobile_start_date = session.date_to_echo_mobile_timezone(user_start_date)
+        echo_mobile_end_date = session.date_to_echo_mobile_timezone(user_end_date)
 
         report = session.messages_report(
-            start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"), direction=MessageDirection.Incoming)
+            echo_mobile_start_date.strftime("%Y-%m-%d"), echo_mobile_end_date.strftime("%Y-%m-%d"),
+            direction=MessageDirection.Incoming)
     finally:
         # Delete the background task we made when generating the report
         session.delete_session_background_tasks()
@@ -86,7 +94,7 @@ if __name__ == "__main__":
         )
 
     # Filter out messages sent outwith the desired time range.
-    messages = list(filter(lambda td: start_date <= isoparse(td["Date"]) < end_date, messages))
+    messages = list(filter(lambda td: echo_mobile_start_date <= isoparse(td["Date"]) < echo_mobile_end_date, messages))
 
     # Add a unique id to each message
     for td in messages:
