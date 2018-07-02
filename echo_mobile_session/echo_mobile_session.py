@@ -48,11 +48,11 @@ class EchoMobileSession(object):
     A client-side API for interacting with Echo Mobile servers.
     
     For example, to download a survey report:
-    >>> session = EchoMobileSession()
-    >>> session.login(<USERNAME>, <PASSWORD>)
-    >>> session.use_account_with_name(<ACCOUNT_NAME>)  # Optional for users with only one account
-    >>> report = session.survey_report_for_name(<SURVEY_NAME>)
-    >>> session.delete_session_background_tasks()  # Removes the report background task from the Echo Mobile website.
+    >>> session = EchoMobileSession() # doctest: +SKIP
+    >>> session.login(<USERNAME>, <PASSWORD>) # doctest: +SKIP
+    >>> session.use_account_with_name(<ACCOUNT_NAME>)  # Optional for users with only one account # doctest: +SKIP
+    >>> report = session.survey_report_for_name(<SURVEY_NAME>) # doctest: +SKIP
+    >>> session.delete_session_background_tasks()  # Removes the report background task from the Echo Mobile website. # doctest: +SKIP
     """
     BASE_URL = "https://www.echomobile.org/api/"
 
@@ -645,7 +645,7 @@ class EchoMobileSession(object):
         No other endings are supported.
 
         >>> EchoMobileSession().echo_mobile_date_to_iso("2018-06-02 04:20 EAT")
-        '2018-06-02T04:20:00+03:00
+        '2018-06-02T04:20:00+03:00'
 
         :param date: String in the format 'YY-MM-DD hh:mm'
         :type date: str
