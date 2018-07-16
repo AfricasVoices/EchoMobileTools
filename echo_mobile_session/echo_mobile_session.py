@@ -452,8 +452,12 @@ class EchoMobileSession(object):
         request = self.session.post(self.BASE_URL + "cms/report/generate",
                                     params={"type": ReportType.SurveyReport, "ftype": FileType.CSV,
                                             "target": survey_key,
-                                            "gen": ",".join(response_formats),
-                                            "std_field": ",".join(contact_fields)
+                                            "gen": "raw,label,value,score",
+                                            "std_field": "name,phone,internal_id,group,referrer,referrer_phone,"
+                                                         "upload_date,last_survey_complete_date,geo,locationTextRaw,"
+                                                         "labels,linked_entity,opted_out",
+                                            "field": "ag1zfm0tc3dhbGktaHJkchILEgVGaWVsZBiAgJD-tu7RCAw",
+                                            "noreplies": 1
                                             }
                                     )
         response = request.json()
