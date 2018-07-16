@@ -14,6 +14,16 @@ class EchoMobileError(Exception):
     pass
 
 
+class NoSessionDataError(Exception):
+    """
+    Raised when an operation fails because EchoMobileSession.login_data has not been set.
+
+    Resolve this exception by calling EchoMobileSession.login().
+    """
+    def __init__(self, message="Resolve this by calling EchoMobileSession.login() first."):
+        super().__init__(message)
+
+
 class ReportType(object):
     """
     Contains the report types which Echo Mobile can export, and the corresponding ids used by Echo Mobile
@@ -66,7 +76,7 @@ class EchoMobileSession(object):
         self.session = requests.Session()
         self.verbose = verbose
         self.background_tasks = set()
-        self.login_data = None
+        self.login_data = None  # Data provided to the user about the current organisation, account etc. on log-in.
 
     def log(self, message, **log_args):
         if self.verbose:
@@ -655,22 +665,25 @@ class EchoMobileSession(object):
         :type timezone: pytz.tzfile
         :return: String in the format 'YYYY-MM-DDThh:mm:ss+/-hh:mm'
         :rtype: str
+        :raises NoSessionDataError:
         """
         if date.endswith(" EAT"):
             if timezone is None:
                 timezone = pytz.timezone("Africa/Nairobi")
             date = date[:-4]
 
-        if timezone is None:
-            timezone = pytz.timezone(self.login_data["tz"])
-
         # Parse date into a datetime object.
         parsed = datetime.strptime(date, "%Y-%m-%d %H:%M")
+
+        if timezone is None:
+            if self.login_data is None:
+                raise NoSessionDataError()
+            timezone = pytz.timezone(self.login_data["tz"])
 
         # Use timezone.localize because pytz is incompatible with datetime.replace(tzinfo=...).
         return timezone.localize(parsed).isoformat()
 
-    def date_to_echo_mobile_timezone(self, dt):
+    def datetime_to_echo_mobile_datetime(self, dt):
         """
         Converts a datetime object to one in the timezone this user is currently using with Echo Mobile.
 
@@ -679,6 +692,8 @@ class EchoMobileSession(object):
         :return: Localized datetime.
         :rtype: datetime
         """
+        if self.login_data is None:
+            raise NoSessionDataError()
         timezone = pytz.timezone(self.login_data["tz"])
         return dt.astimezone(timezone)
 
