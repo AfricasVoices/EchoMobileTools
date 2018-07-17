@@ -8,33 +8,53 @@ exports to a JSON file ready for consumption by the rest of the pipeline.
 ## Set-Up
 1. Install Pipenv: `$ pip install pipenv`.
 
-1. Install dependencies: `$ pipenv sync`.
+1. Install dependencies: `$ pipenv --three && pipenv sync`.
 
 ## Usage
 ### Survey Report
 To generate and download a survey report, and export to a TracedData JSON file:
 ```
-$ pipenv run python survey_report.py <user> <echo-mobile-username> <echo-mobile-password> <account> <survey-name> <output>
+$ pipenv run python survey_report.py <user> <echo-mobile-username> <echo-mobile-password> <account> <survey-name> <phone-uuid-table> <output>
 ```
 where:
 - `user` is the identifier of the user launching the program,
 - `echo-mobile-username` is the email address of the user to log in to Echo Mobile as,
 - `echo-mobile-password` is the password to use when logging into Echo Mobile,
 - `account` is the name of the Echo Mobile organisation to log into,
-- `survey-name` is the name of the survey to download e.g. `Socio-demographic survey 1`, and
+- `survey-name` is the name of the survey to download e.g. `"Socio-demographic survey 1"`,
+- `phone uuid-table` is the the path to a JSON file containing an existing phone number <-> UUID table to use and update, and
+- `output` is the path to a JSON file where the report output should be written to.
+
+### Messages Report
+To generate and download all incoming messages received in a given time range (including survey responses), 
+and export to a TracedData file:
+```
+$ pipenv run python mesages_report.py <user> <echo-mobile-username> <echo-mobile-password> <account> <start-date> <end-date> <phone-uuid-table> <message-uuid-table> <json-output>
+```
+where:
+- `user` is the identifier of the user launching the program,
+- `echo-mobile-username` is the email address of the user to log in to Echo Mobile as,
+- `echo-mobile-password` is the password to use when logging into Echo Mobile,
+- `account` is the name of the Echo Mobile organisation to log into,
+- `start-date` is the inclusive start range of messages to export, expressed as an ISO time string e.g `2018-06-15T17:19:42+03:00`,
+- `end` is the exclusive end range of messages to export, expressed as an ISO time string,
+- `phone uuid-table` is the the path to a JSON file containing an existing phone number <-> UUID table to use and update,
+- `message uuid-table` is the the path to a JSON file containing an existing message -> UUID table to use and update, and
 - `output` is the path to a JSON file where the report output should be written to.
     
 ### Inbox Report
-To generate and download a global inbox report, and export to a TracedData JSON file:
+To generate and download a global inbox report (all incoming messages which are not survey answers),
+and export to a TracedData JSON file:
 ```
-$ pipenv run python inbox_report.py <user> <echo-mobile-username> <echo-mobile-password> <account> <uuid-table> <json-output>
+$ pipenv run python inbox_report.py <user> <echo-mobile-username> <echo-mobile-password> <account> <phone-uuid-table> <message-uuid-table> <json-output>
 ```
 where:
 - `user` is the identifier of the user launching the program,
 - `echo-mobile-username` is the email address of the user to log in to Echo Mobile as,
 - `echo-mobile-password` is the password to use when logging into Echo Mobile,
 - `account` is the name of the Echo Mobile organisation to log into,
-- `uuid-table` is the the path to a JSON file containing an existing phone number <-> UUID table to use and update, and
+- `phone uuid-table` is the the path to a JSON file containing an existing phone number <-> UUID table to use and update,
+- `message uuid-table` is the the path to a JSON file containing an existing message -> UUID table to use and update, and
 - `output` is the path to a JSON file where the report output should be written to.
 
 To generate and download a report for the inbox of a specific group, add the flag `--inbox <group-name>`.
