@@ -20,29 +20,31 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Poll Echo Mobile for survey results")
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
-    parser.add_argument("user", help="Identifier of user launching this program", nargs=1)
-    parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
-    parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
-    parser.add_argument("account", help="Name of Echo Mobile organisation to log into", nargs=1)
-    parser.add_argument("--inbox", help="Only download messages from the specified inbox name")
-    parser.add_argument("phone_uuid_table", metavar="phone-uuid-table", nargs=1,
+    parser.add_argument("user", help="Identifier of user launching this program, for use by TracedData Metadata")
+    parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username")
+    parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password")
+    parser.add_argument("account", help="Name of Echo Mobile organisation to log into")
+    parser.add_argument("--inbox", help="Only download messages from the specified inbox name."
+                                        "If this flag is omitted, messages from all inboxes will be exported")
+    parser.add_argument("phone_uuid_table_path", metavar="phone-uuid-table-path",
                         help="JSON file containing an existing phone number <-> UUID lookup table. "
                              "This file will be updated with the new phone numbers which are found by this process.")
-    parser.add_argument("message_uuid_table", metavar="message-uuid-table", nargs=1,
+    parser.add_argument("message_uuid_table_path", metavar="message-uuid-table-path",
                         help="JSON file containing an existing message -> UUID lookup table. "
                              "This file will be updated with the new messages which are found by this process.")
-    parser.add_argument("json_output", metavar="json-output", help="JSON file to write serialized data to", nargs=1)
+    parser.add_argument("json_output_path", metavar="json-output-path",
+                        help="Path to a JSON file to write processed TracedData messages to")
 
     args = parser.parse_args()
     verbose_mode = args.verbose
-    user = args.user[0]
-    echo_mobile_username = args.echo_mobile_username[0]
-    echo_mobile_password = args.echo_mobile_password[0]
-    account_name = args.account[0]
+    user = args.user
+    echo_mobile_username = args.echo_mobile_username
+    echo_mobile_password = args.echo_mobile_password
+    account_name = args.account
     inbox = args.inbox
-    phone_uuid_path = args.phone_uuid_table[0]
-    message_uuid_path = args.message_uuid_table[0]
-    json_output_path = args.json_output[0]
+    phone_uuid_path = args.phone_uuid_table_path
+    message_uuid_path = args.message_uuid_table_path
+    json_output_path = args.json_output_path
 
     # Load the existing UUID table
     with open(phone_uuid_path, "r") as f:
