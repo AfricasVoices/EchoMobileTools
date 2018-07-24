@@ -20,25 +20,26 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Poll Echo Mobile for survey results")
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
-    parser.add_argument("user", help="Identifier of user launching this program", nargs=1)
-    parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username", nargs=1)
-    parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password", nargs=1)
-    parser.add_argument("account", help="Name of Echo Mobile organisation to log into", nargs=1)
-    parser.add_argument("survey_name", metavar="survey-name", help="Name of survey to download the results of", nargs=1)
-    parser.add_argument("phone_uuid_table", metavar="phone-uuid-table", nargs=1,
+    parser.add_argument("user", help="Identifier of user launching this program, for use by TracedData Metadata")
+    parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username")
+    parser.add_argument("echo_mobile_password", metavar="echo-mobile-password", help="Echo Mobile password")
+    parser.add_argument("account", help="Name of Echo Mobile organisation to log into")
+    parser.add_argument("survey_name", metavar="survey-name", help="Name of survey to download the results of")
+    parser.add_argument("phone_uuid_table_path", metavar="phone-uuid-table-path",
                         help="JSON file containing an existing phone number <-> UUID lookup table. "
                              "This file will be updated with the new phone numbers which are found by this process.")
-    parser.add_argument("output", help="JSON file to write serialized data to", nargs=1)
+    parser.add_argument("json_output_path", metavar="json-output-path",
+                        help="Path to a JSON file to write processed TracedData messages to")
 
     args = parser.parse_args()
     verbose_mode = args.verbose
-    user = args.user[0]
-    echo_mobile_username = args.echo_mobile_username[0]
-    echo_mobile_password = args.echo_mobile_password[0]
-    account_name = args.account[0]
-    survey_name = args.survey_name[0]
-    phone_uuid_path = args.phone_uuid_table[0]
-    output_path = args.output[0]
+    user = args.user
+    echo_mobile_username = args.echo_mobile_username
+    echo_mobile_password = args.echo_mobile_password
+    account_name = args.account
+    survey_name = args.survey_name
+    phone_uuid_path = args.phone_uuid_table_path
+    json_output_path = args.json_output_path
 
     # Load the existing UUID table
     with open(phone_uuid_path, "r") as f:
@@ -78,7 +79,7 @@ if __name__ == "__main__":
         phone_uuids.dump(f)
 
     # Write the parsed items to a json file
-    if os.path.dirname(output_path) is not "" and not os.path.exists(os.path.dirname(output_path)):
-        os.makedirs(os.path.dirname(output_path))
-    with open(output_path, "w") as f:
+    if os.path.dirname(json_output_path) is not "" and not os.path.exists(os.path.dirname(json_output_path)):
+        os.makedirs(os.path.dirname(json_output_path))
+    with open(json_output_path, "w") as f:
         TracedDataJsonIO.export_traced_data_iterable_to_json(data, f, pretty_print=True)
