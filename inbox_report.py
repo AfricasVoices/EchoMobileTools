@@ -18,7 +18,7 @@ if six.PY3:
 if __name__ == "__main__":
     BASE_URL = "https://www.echomobile.org/api/"
 
-    parser = argparse.ArgumentParser(description="Poll Echo Mobile for survey results")
+    parser = argparse.ArgumentParser(description="Poll Echo Mobile for messages in a group inbox or the global inobx")
     parser.add_argument("-v", "--verbose", help="Verbose output", action="store_true")
     parser.add_argument("user", help="Identifier of user launching this program, for use by TracedData Metadata")
     parser.add_argument("echo_mobile_username", metavar="echo-mobile-username", help="Echo Mobile username")
