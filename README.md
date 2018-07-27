@@ -71,3 +71,9 @@ set the `response_formats` and `contact_fields` parameters of the calls
 to `session.survey_report_for_name` or `session.inbox_report`.
 Refer to the documentation for those functions for the full
 list of options.
+
+### Testing
+All tests are written in Python's unittest library, and should be runnable solely using the unittest module. However, we recommend using pytest to actually drive the tests. To do this:
+
+1. Run `$ pipenv sync --dev` to install pytest into the project's virtual environment.
+2. To run the tests: `$ pipenv run python -m pytest --doctest-modules`.
